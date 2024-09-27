@@ -5,34 +5,16 @@ Class {
 	#name : #M3UALayerManagement,
 	#superclass : #M3UAEntity,
 	#instVars : [
-		'as_status_block',
-		'managedProcess'
+		'as_status_block'
 	],
 	#category : #'M3UA-Core'
 }
 
 { #category : #'instance creation' }
-M3UALayerManagement class >> on: anAsp [
+M3UALayerManagement class >> onManagedASP: anApplicationServerProcess [
 	^ self new
-		applicationServerProcess: anAsp;
+		manageASP: anApplicationServerProcess;
 		yourself
-]
-
-{ #category : #access }
-M3UALayerManagement >> applicationServerProcess [
-	^managedProcess
-]
-
-{ #category : #access }
-M3UALayerManagement >> applicationServerProcess: anApplicationServerProcess [
-	managedProcess := anApplicationServerProcess.
-	managedProcess
-		onSctpLocalEstablished: [ self sctpLocalEstablished ];
-		onSctpRestarted: [ self sctpLocalEstablished ];
-		onAspUp: [ managedProcess aspIsUp ];
-		onAspDown: [ managedProcess aspIsDown ];
-		onAspActive: [ managedProcess aspIsActivated ];
-		onAspInactive: [ managedProcess aspIsInactivated ]
 ]
 
 { #category : #'Primitives-LayerManagement-AS' }
@@ -41,6 +23,46 @@ M3UALayerManagement >> asStatus [
    	Direction: LM -> M3UA
    	Purpose: LM requests that M3UA report the status of an AS."
 
+]
+
+{ #category : #managing }
+M3UALayerManagement >> aspIsActivated: anApplicationServerProcess [
+	self
+		logDebug:
+			self class name , ' (' , anApplicationServerProcess name , ')'
+				, ' has received an ACTIVE ACK msg from its peer'
+		area: #m3ua.
+	self handleAspActiveIndication
+]
+
+{ #category : #managing }
+M3UALayerManagement >> aspIsDown: anApplicationServerProcess [
+	self
+		logDebug:
+			self class name , ' (' , anApplicationServerProcess name , ')'
+				, ' has received an DOWN ACK msg from its peer'
+		area: #m3ua.
+	self handleAspDownIndication
+]
+
+{ #category : #managing }
+M3UALayerManagement >> aspIsInactivated: anApplicationServerProcess [
+	self
+		logDebug:
+			self class name , ' (' , anApplicationServerProcess name , ')'
+				, ' has received an INACTIVE ACK msg from its peer'
+		area: #m3ua.
+	self handleAspInactiveIndication
+]
+
+{ #category : #managing }
+M3UALayerManagement >> aspIsUp: anApplicationServerProcess [
+	self
+		logDebug:
+			self class name , ' (' , anApplicationServerProcess name , ')'
+				, ' has received an UP ACK msg from its peer'
+		area: #m3ua.
+	self handleAspUpIndication
 ]
 
 { #category : #'ASP Querying (Audit) - SSNM' }
@@ -163,7 +185,7 @@ M3UALayerManagement >> handleNotifyIndication [
    from its peer."
 ]
 
-{ #category : #'Primitives-LayerManagement-RK' }
+{ #category : #'Primitives-LayerManagement-RKM' }
 M3UALayerManagement >> handleRkDeregIndication [
 	"M-RK_DEREG indication
    Direction: M3UA -> LM
@@ -172,7 +194,7 @@ M3UALayerManagement >> handleRkDeregIndication [
 
 ]
 
-{ #category : #'Primitives-LayerManagement-RK' }
+{ #category : #'Primitives-LayerManagement-RKM' }
 M3UALayerManagement >> handleRkRegIndication [
 	"M-RK_REG indication
    Direction: M3UA -> LM
@@ -217,12 +239,14 @@ M3UALayerManagement >> handleSctpStatusIndication [
 ]
 
 { #category : #managing }
-M3UALayerManagement >> manage [
-	"I begin to manage the process."
-
-	managedProcess
-		sctpRelease;
-		sctpEstablish
+M3UALayerManagement >> manageASP: anApplicationServerProcess [
+	anApplicationServerProcess
+		onSctpLocalEstablished: [ self sctpLocalEstablished: anApplicationServerProcess ];
+		onSctpRestarted: [ self sctpLocalEstablished: anApplicationServerProcess ];
+		onAspUp: [ self aspIsUp: anApplicationServerProcess ];
+		onAspDown: [ self aspIsDown: anApplicationServerProcess ];
+		onAspActive: [ self aspIsActivated: anApplicationServerProcess];
+		onAspInactive: [ self aspIsInactivated: anApplicationServerProcess]
 ]
 
 { #category : #'Primitives-LayerManagement-AS' }
@@ -234,36 +258,48 @@ M3UALayerManagement >> onAsStatus: aBlock [
 	as_status_block := aBlock
 ]
 
-{ #category : #'Primitives-LayerManagement-RK' }
-M3UALayerManagement >> rkDereg [
+{ #category : #'Primitives-LayerManagement-RKM' }
+M3UALayerManagement >> rkDereg: anApplicationServerProcess with: aCollectionOfRoutingContexts [
 	"M-RK_DEREG request
    Direction: LM -> M3UA
    Purpose: LM requests that ASP deregister RK(s) with its peer by
    sending a DEREG REQ message."
 
-
-	self flag: #todo.
-	managedProcess createDeregistrationRequestWith: 0 
+	| deregistrationRequestMsg |
+	deregistrationRequestMsg := anApplicationServerProcess
+		createDeregistrationRequestWith: aCollectionOfRoutingContexts.
+	^ deregistrationRequestMsg
 ]
 
-{ #category : #'Primitives-LayerManagement-RK' }
-M3UALayerManagement >> rkReg [
+{ #category : #'Primitives-LayerManagement-RKM' }
+M3UALayerManagement >> rkReg: anApplicationServerProcess with: aCollectionOfRoutingKey [
 	"M-RK_REG request
    Direction: LM -> M3UA
    Purpose: LM requests that ASP register RK(s) with its peer by sending
    an REG REQ message"
 
-	self flag: #todo.
-	managedProcess createRegistrationRequestWith: OrderedCollection new
+	| registrationRequestMsg |
+	registrationRequestMsg := anApplicationServerProcess
+		createRegistrationRequestWith: aCollectionOfRoutingKey.
+	^ registrationRequestMsg
 ]
 
 { #category : #managing }
-M3UALayerManagement >> sctpLocalEstablished [
+M3UALayerManagement >> sctpLocalEstablished: anApplicationServerProcess [
 	"ASP has confirmed to us (LM) that it has established an SCTP association with an SGP (AS)."
 
-	managedProcess state class = M3UAAspStateActive
+	anApplicationServerProcess state class = M3UAAspStateActive
 		ifTrue: [ ^ self ].
 		
 	"There is only one way forward"
-	managedProcess aspUp
+	anApplicationServerProcess aspUp
+]
+
+{ #category : #managing }
+M3UALayerManagement >> startASP: anApplicationServerProcess [
+	"I begin to manage the process."
+
+	anApplicationServerProcess
+		sctpRelease;
+		sctpEstablish
 ]

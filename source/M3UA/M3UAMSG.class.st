@@ -27,8 +27,8 @@ Class {
 		'msg_class',
 		'msg_type',
 		'tags',
-		'originAspIdentifier',
-		'serverChannel'
+		'delegateChannel',
+		'logicalProcessReceiver'
 	],
 	#category : #'M3UA-Messages'
 }
@@ -118,19 +118,34 @@ M3UAMSG >> asByteArray [
 	^ buffer asByteArray
 ]
 
+{ #category : #access }
+M3UAMSG >> aspIdentifier [
+	^ nil
+]
+
 { #category : #creation }
 M3UAMSG >> class: aClass [
 	msg_class := aClass
 ]
 
+{ #category : #accessing }
+M3UAMSG >> delegateChannel [
+	^ delegateChannel
+]
+
+{ #category : #accessing }
+M3UAMSG >> delegateChannel: anObject [
+	delegateChannel := anObject
+]
+
 { #category : #'m3ua-asp-dispatch' }
-M3UAMSG >> dispatchOnAsp: anAsp [
+M3UAMSG >> dispatchOnLogicalProcess: anAsp [
 	anAsp handleUnknownMessage: self
 ]
 
 { #category : #accessing }
 M3UAMSG >> findAllTags: aTagIdentifier [
-	^ self tags collect: [ :each | each isTag: aTagIdentifier ]
+	^ self tags select: [ :each | each isTag: aTagIdentifier ]
 ]
 
 { #category : #accessing }
@@ -149,6 +164,16 @@ M3UAMSG >> findTag: aTagIdentifier ifAbsent: aBlock [
 			(each isTag: aTagIdentifier)
 				ifTrue: [ ^ each ] ].
 	^ aBlock value
+]
+
+{ #category : #accessing }
+M3UAMSG >> logicalProcessReceiver [
+	^ logicalProcessReceiver
+]
+
+{ #category : #accessing }
+M3UAMSG >> logicalProcessReceiver: anObject [
+	logicalProcessReceiver := anObject
 ]
 
 { #category : #accessing }
@@ -171,16 +196,6 @@ M3UAMSG >> msgType: aType [
 	msg_type := aType
 ]
 
-{ #category : #accessing }
-M3UAMSG >> originAspIdentifier [
-	^ originAspIdentifier
-]
-
-{ #category : #accessing }
-M3UAMSG >> originAspIdentifier: anObject [
-	originAspIdentifier := anObject
-]
-
 { #category : #parsing }
 M3UAMSG >> parseFrom: aStream [
 	| len |
@@ -189,7 +204,7 @@ M3UAMSG >> parseFrom: aStream [
 	msg_class := aStream next.
 	msg_type := aStream next.
 	len := self parseLength: aStream.
-	tags := self parseTags: aStream to: aStream position + len - 8
+	self parseTags: aStream to: aStream position + len - 8
 ]
 
 { #category : #parsing }
@@ -240,16 +255,6 @@ M3UAMSG >> parseVersion: aStream [
 				area: #m3ua.
 			self
 				error: ('M3UA version is wrong <1p>.' expandMacrosWith: version) ]
-]
-
-{ #category : #accessing }
-M3UAMSG >> serverChannel [
-	^ serverChannel
-]
-
-{ #category : #accessing }
-M3UAMSG >> serverChannel: anObject [
-	serverChannel := anObject
 ]
 
 { #category : #private }

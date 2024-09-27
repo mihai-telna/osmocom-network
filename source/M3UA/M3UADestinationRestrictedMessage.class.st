@@ -11,6 +11,6 @@ M3UADestinationRestrictedMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UADestinationRestrictedMessage >> dispatchOnAsp: anAsp [
+M3UADestinationRestrictedMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp mtp3Boundary handleDestinationRestricted: self
 ]

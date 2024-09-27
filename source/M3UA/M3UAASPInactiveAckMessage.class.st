@@ -11,6 +11,6 @@ M3UAASPInactiveAckMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPInactiveAckMessage >> dispatchOnAsp: anAsp [
+M3UAASPInactiveAckMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp handleAspInactiveAck: self
 ]

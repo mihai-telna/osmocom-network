@@ -10,6 +10,6 @@ M3UADestinationStateAuditMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UADestinationStateAuditMessage >> dispatchOnAsp: anAsp [
+M3UADestinationStateAuditMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp mtp3Boundary handleDestinationStateAudit: self
 ]

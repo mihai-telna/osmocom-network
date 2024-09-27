@@ -62,7 +62,7 @@ M3UAMTPLevel3Boundary >> handleTransferMessage: aMsg [
 		ifAbsent: [ self flag: #todo ].
 	tagProtocolData isSCCP
 		ifTrue: [ ^ applicationServerProcess networkService
-				handleSCCPData: tagProtocolData userProtocolData
+				signalUnitData: tagProtocolData userProtocolData
 				fromOpc: tagProtocolData opcField
 				toDpc: tagProtocolData dpcField
 				priority: tagProtocolData mpField ].

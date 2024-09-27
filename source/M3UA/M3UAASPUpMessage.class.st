@@ -10,8 +10,14 @@ M3UAASPUpMessage class >> messageTag [
 
 ]
 
+{ #category : #access }
+M3UAASPUpMessage >> aspIdentifier [
+	^ (self findTag: M3UAConstants tagASPIdentifier ifAbsent: [ ^ nil ])
+		data asArray
+]
+
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPUpMessage >> dispatchOnAsp: anAsp [
-	anAsp applicationServer handleAspUp: self
+M3UAASPUpMessage >> dispatchOnLogicalProcess: aSGP [
+	aSGP host handleAspUp: self receivedOnSGP: aSGP
 
 ]

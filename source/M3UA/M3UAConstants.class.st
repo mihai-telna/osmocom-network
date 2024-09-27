@@ -55,11 +55,6 @@ M3UAConstants class >> tagASPIdentifier [
 ]
 
 { #category : #tags }
-M3UAConstants class >> tagASPTMAspActiveTrafficMode [
-	^ 11
-]
-
-{ #category : #tags }
 M3UAConstants class >> tagAffectedPointCode [
 	^ 18
 ]
@@ -177,6 +172,11 @@ M3UAConstants class >> tagRoutingKey [
 { #category : #tags }
 M3UAConstants class >> tagServiceIndicators [
 	^ 524
+]
+
+{ #category : #tags }
+M3UAConstants class >> tagTrafficModeType [
+	^ 11
 ]
 
 { #category : #tags }

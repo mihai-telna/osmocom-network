@@ -11,7 +11,7 @@ M3UAASPDownMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPDownMessage >> dispatchOnAsp: anAsp [
-	anAsp applicationServer handleAspDown: self
+M3UAASPDownMessage >> dispatchOnLogicalProcess: aSGP [
+	aSGP host handleAspDown: self
 
 ]

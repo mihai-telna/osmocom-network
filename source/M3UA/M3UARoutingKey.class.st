@@ -1,8 +1,26 @@
+"
+Instance Variables
+	dpc:		<Object>
+	listOpc:		<Object>
+	localRKIdentifier:		<Object>
+	networkAppearance:		<Object>
+	routingContext:		<Object>
+	serviceIndicators:		<Object>
+	trafficModeType:		<Object>
+
+
+DPC and OPC list are represented in ANSI format (24 bits for Network (8bits), Cluster (6 bits), Member (10 bits))
+"
 Class {
 	#name : #M3UARoutingKey,
 	#superclass : #Object,
 	#instVars : [
-		'opc',
+		'localRKIdentifier',
+		'routingContext',
+		'trafficModeType',
+		'networkAppearance',
+		'serviceIndicators',
+		'listOpc',
 		'dpc'
 	],
 	#category : #'M3UA-Core'
@@ -16,7 +34,6 @@ M3UARoutingKey class >> defaultBitmapSize [
 { #category : #'instance creation' }
 M3UARoutingKey class >> dpc: anIntegerDPC [
 	^ self new
-		opc: 0;
 		dpc: anIntegerDPC;
 		yourself
 ]
@@ -24,42 +41,6 @@ M3UARoutingKey class >> dpc: anIntegerDPC [
 { #category : #'instance creation' }
 M3UARoutingKey class >> fromBitmap: aBitmap [
 	self flag: #todo
-]
-
-{ #category : #'instance creation' }
-M3UARoutingKey class >> opc: anIntegerOPC dpc: anIntegerDPC [
-	^ self new
-		opc: anIntegerOPC;
-		dpc: anIntegerDPC;
-		yourself
-]
-
-{ #category : #converting }
-M3UARoutingKey >> asBitmap [
-	^ self asBitmapOfSize: self class defaultBitmapSize
-]
-
-{ #category : #converting }
-M3UARoutingKey >> asBitmapOfSize: anInteger [
-	| bitmap |
-	(opc between: 0 and: 255)
-		ifFalse: [ ^ self error: 'opc must be beetween 0 and 255' ].
-	(dpc between: 0 and: 255)
-		ifFalse: [ ^ self error: 'dpc must be beetween 0 and 255' ].
-	bitmap := Bitmap new: anInteger.
-
-	"Store opc in the first bits"
-	1 to: anInteger / 2 do: [ :index | 
-		bitmap
-			at: index
-			put: ((opc bitAnd: (1 bitShift: anInteger / 2 - index)) > 0) asBit ].
-
-	"Store dpc in the last bits"
-	1 to: anInteger / 2 do: [ :index | 
-		bitmap
-			at: anInteger / 2 + index
-			put: ((dpc bitAnd: (1 bitShift: anInteger / 2 - index)) > 0) asBit ].
-	^ bitmap
 ]
 
 { #category : #accessing }
@@ -73,11 +54,61 @@ M3UARoutingKey >> dpc: anObject [
 ]
 
 { #category : #accessing }
-M3UARoutingKey >> opc [
-	^ opc
+M3UARoutingKey >> listOpc [
+	^ listOpc
 ]
 
 { #category : #accessing }
-M3UARoutingKey >> opc: anObject [
-	opc := anObject
+M3UARoutingKey >> listOpc: anObject [
+	listOpc := anObject
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> localRKIdentifier [
+	^ localRKIdentifier
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> localRKIdentifier: anObject [
+	localRKIdentifier := anObject
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> networkAppearance [
+	^ networkAppearance
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> networkAppearance: anObject [
+	networkAppearance := anObject
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> routingContext [
+	^ routingContext
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> routingContext: anObject [
+	routingContext := anObject
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> serviceIndicators [
+	^ serviceIndicators
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> serviceIndicators: anObject [
+	serviceIndicators := anObject
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> trafficModeType [
+	^ trafficModeType
+]
+
+{ #category : #accessing }
+M3UARoutingKey >> trafficModeType: anObject [
+	trafficModeType := anObject
 ]

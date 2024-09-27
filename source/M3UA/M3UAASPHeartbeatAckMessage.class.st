@@ -11,5 +11,6 @@ M3UAASPHeartbeatAckMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPHeartbeatAckMessage >> dispatchOnAsp: anAsp [
+M3UAASPHeartbeatAckMessage >> dispatchOnLogicalProcess: anAsp [
+	anAsp handleAspHeartbeatAck: self
 ]

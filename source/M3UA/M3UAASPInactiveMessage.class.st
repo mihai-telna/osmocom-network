@@ -11,7 +11,7 @@ M3UAASPInactiveMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPInactiveMessage >> dispatchOnAsp: anAsp [
-	anAsp applicationServer handleAspInactive: self
+M3UAASPInactiveMessage >> dispatchOnLogicalProcess: aSGP [
+	aSGP host handleAspInactive: self receivedOnSGP: aSGP
 
 ]

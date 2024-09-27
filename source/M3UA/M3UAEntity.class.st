@@ -10,7 +10,7 @@ Class {
 { #category : #initialization }
 M3UAEntity >> initialize [
 	super initialize.
-	debugOn := true
+	self putDebugOff
 ]
 
 { #category : #logging }
@@ -20,11 +20,16 @@ M3UAEntity >> logDebug: aMessage area: anArea [
 ]
 
 { #category : #access }
+M3UAEntity >> putDebug: aBoolean [
+	debugOn := aBoolean
+]
+
+{ #category : #access }
 M3UAEntity >> putDebugOff [
-	debugOn := false
+	self putDebug: false
 ]
 
 { #category : #access }
 M3UAEntity >> putDebugOn [
-	debugOn := true
+	self putDebug: true
 ]
