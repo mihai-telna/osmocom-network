@@ -12,7 +12,7 @@ Class {
 	#category : #'M3UA-Tags'
 }
 
-{ #category : #creation }
+{ #category : #'instance creation' }
 M3UATag class >> copyFromOtherTag: aTag [
 	^ self new
 		tag_nr: aTag nr;
@@ -25,23 +25,85 @@ M3UATag class >> fromStream: aStream [
 	^ self new parseFrom: aStream
 ]
 
-{ #category : #creation }
-M3UATag class >> initWith: aTag data: aData [
+{ #category : #'instance creation' }
+M3UATag class >> initDataWithInteger24bits: anInteger paddingFirstWith: aMaskInteger [
+	"Padding is 32 bits (4 bytes)"
+
+	| buffer |
+	buffer := MessageBuffer new.
+	buffer putByteArray: (aMaskInteger asByteArrayOfSize: 1).
+	buffer putByteArray: (anInteger asByteArrayOfSize: 3).
 	^ self new
-		instVarNamed: #tag_nr put: aTag;
-		instVarNamed: #data put: aData;
+		tag_nr: self nrValue;
+		data: buffer asByteArray;
 		yourself
 ]
 
-{ #category : #creation }
-M3UATag class >> initWithData32bitsInteger: anInteger [
+{ #category : #'instance creation' }
+M3UATag class >> initDataWithNInteger24bits: aCollectionOfInteger paddingFirstWith: aCollectionOfMaskInteger [
+	"Padding is 32 bits (4 bytes)"
+
+	| buffer |
+	buffer := MessageBuffer new.
+	1 to: aCollectionOfInteger size do: [ :i | 
+		buffer
+			putByteArray: ((aCollectionOfMaskInteger at: i) asByteArrayOfSize: 1).
+		buffer
+			putByteArray: ((aCollectionOfInteger at: i) asByteArrayOfSize: 3) ].
+	^ self new
+		tag_nr: self nrValue;
+		data: buffer asByteArray;
+		yourself
+]
+
+{ #category : #'instance creation' }
+M3UATag class >> initDataWithNInteger8bits: anArrayOfInteger withPadding: aBoolean [
+	"If padding, this is 32 bits-padding (4 bytes)"
+
+	| restOfDivision buffer |
+	buffer := MessageBuffer new.
+	anArrayOfInteger
+		do: [ :anInteger | buffer putByteArray: (anInteger asByteArrayOfSize: 1) ].
+	(aBoolean
+		and: [ (restOfDivision := anArrayOfInteger size \\ 4) ~= 0 ])
+		ifTrue: [ 4 - restOfDivision
+				timesRepeat: [ buffer putByteArray: (0 asByteArrayOfSize: 1) ] ].
+	^ self new
+		tag_nr: self nrValue;
+		data: buffer asByteArray;
+		yourself
+]
+
+{ #category : #'instance creation' }
+M3UATag class >> initDataWithOne32bitsInteger: anInteger [
 	^ self new
 		tag_nr: self nrValue;
 		data: (anInteger asByteArrayOfSize: 4);
 		yourself
 ]
 
-{ #category : #creation }
+{ #category : #'instance creation' }
+M3UATag class >> initDataWithThreeInteger32bits: anArrayOfInteger [
+	| buffer |
+	buffer := MessageBuffer new.
+	buffer putLen32: (anArrayOfInteger at: 1).
+	buffer putLen32: (anArrayOfInteger at: 2).
+	buffer putLen32: (anArrayOfInteger at: 3).
+	^ self new
+		tag_nr: self nrValue;
+		data: buffer asByteArray;
+		yourself
+]
+
+{ #category : #'instance creation' }
+M3UATag class >> initWith: aTag data: aData [
+	^ self new
+		tag_nr: aTag;
+		data: aData;
+		yourself
+]
+
+{ #category : #'instance creation' }
 M3UATag class >> initWithData: aData [
 	^ self new
 		tag_nr: self nrValue;
@@ -50,47 +112,8 @@ M3UATag class >> initWithData: aData [
 ]
 
 { #category : #'instance creation' }
-M3UATag class >> initWithFourInteger32: anArrayOfInteger [
-	| array |
-	array := ByteArray new: 16.
-	array shortAt: 3 put: (anArrayOfInteger at: 1) bigEndian: true.
-	array shortAt: 7 put: (anArrayOfInteger at: 2) bigEndian: true.
-	array shortAt: 11 put: (anArrayOfInteger at: 3) bigEndian: true.
-	array shortAt: 15 put: (anArrayOfInteger at: 4) bigEndian: true.
-	
-	"buffer := MessageBuffer new.
-	buffer putLen32: (anArrayOfInteger at: 1).
-	buffer putLen32: (anArrayOfInteger at: 2).
-	buffer putLen32: (anArrayOfInteger at: 3).
-	buffer putLen32: (anArrayOfInteger at: 4).
-	buffer asByteArray"
-	^ self new
-		tag_nr: self nrValue;
-		data: array;
-		yourself
-]
-
-{ #category : #'instance creation' }
 M3UATag class >> initWithInteger32: anInteger [
-	^ self initWithData32bitsInteger: anInteger
-]
-
-{ #category : #'instance creation' }
-M3UATag class >> initWithThreeInteger32: anArrayOfInteger [
-	| array |
-	array := ByteArray new: 12.
-	array shortAt: 3 put: (anArrayOfInteger at: 1) bigEndian: true.
-	array shortAt: 7 put: (anArrayOfInteger at: 2) bigEndian: true.
-	array shortAt: 11 put: (anArrayOfInteger at: 3) bigEndian: true.
-	"buffer := MessageBuffer new.
-	buffer putLen32: (anArrayOfInteger at: 1).
-	buffer putLen32: (anArrayOfInteger at: 2).
-	buffer putLen32: (anArrayOfInteger at: 3).
-	buffer asByteArray"
-	^ self new
-		tag_nr: self nrValue;
-		data: array;
-		yourself
+	^ self initDataWithOne32bitsInteger: anInteger
 ]
 
 { #category : #access }
@@ -133,6 +156,11 @@ M3UATag >> isTag: aNr [
 	^ self nr = aNr
 ]
 
+{ #category : #access }
+M3UATag >> length [
+	^ self data size + 4
+]
+
 { #category : #accessing }
 M3UATag >> nr [
 	^ tag_nr
@@ -161,7 +189,7 @@ M3UATag >> tag_nr: anInteger [
 M3UATag >> writeOn: aMsg [
 	| rest |
 	aMsg putLen16: tag_nr.
-	aMsg putLen16: self data size + 4.
+	aMsg putLen16: self length.
 	aMsg putByteArray: self data.
 	rest := self data size \\ 4.
 	rest > 0

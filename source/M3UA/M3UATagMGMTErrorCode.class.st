@@ -5,6 +5,11 @@ Class {
 }
 
 { #category : #access }
+M3UATagMGMTErrorCode class >> invalidRoutingContextValue [
+	^ 25
+]
+
+{ #category : #access }
 M3UATagMGMTErrorCode class >> nrValue [
 	^ M3UAConstants tagMGMTErrorCode
 ]

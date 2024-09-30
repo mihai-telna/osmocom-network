@@ -59,10 +59,12 @@ M3UAAsStateMachineTest >> testDynamicTransitions [
 	self assert: machine state class equals: M3UAAsStatePending.
 	(Delay forSeconds: 1) wait.
 	self assert: machine state class equals: M3UAAsStatePending.
+	"DO NOT let the recovery timer expires"
 	aspMachine3 aspAC: 'ASP3 is active'.
 	self assert: machine state class equals: M3UAAsStateActive.
 	aspMachine3 aspIA: 'ASP3 is inactive'.
 	self assert: machine state class equals: M3UAAsStatePending.
+	"let the recovery timer expires"
 	[ machine recoveryTimerIsStarted ] whileTrue.
 	(Delay forMilliseconds: 5) wait.
 	self assert: machine state class equals: M3UAAsStateInactive.
@@ -79,8 +81,7 @@ M3UAAsStateMachineTest >> testDynamicTransitions [
 	aspMachine1 aspIA: 'ASP1 is inactive'.
 	aspMachine2 aspIA: 'ASP2 is inactive'.
 	self assert: machine state class equals: M3UAAsStatePending.
-	(Delay forSeconds: 1) wait.
-	self assert: machine state class equals: M3UAAsStatePending.
+	"let the recovery timer expires"
 	[ machine recoveryTimerIsStarted ] whileTrue.
 	(Delay forMilliseconds: 5) wait.
 	self assert: machine state class equals: M3UAAsStateInactive.

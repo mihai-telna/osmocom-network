@@ -10,18 +10,21 @@ M3UA Application Server class and state machine.
 
 I can currently only manage a single interface. The specification allows
 a single ASP to send one ASPActive for one interface at a time.
+
+- targetHostIdentifier :  the identifier of the remote peer I want to talk to 
+(almost used when an ASP exchanges with several SG)
 "
 Class {
 	#name : #M3UAApplicationServerProcess,
-	#superclass : #M3UAEntity,
+	#superclass : #M3UALogicalEntityProcess,
 	#instVars : [
-		'applicationServer',
 		'mtp3Boundary',
 		't_ack',
 		'asp_up_block',
 		'asp_down_block',
 		'asp_active_block',
 		'asp_inactive_block',
+		'asp_heartbeat_block',
 		'established',
 		'sctp_confirmed_block',
 		'sctp_local_established_block',
@@ -32,45 +35,10 @@ Class {
 		'rk_dereg_block',
 		'error_block',
 		'sctp_restarted_block',
-		'aspStateMachine',
-		'name',
-		'identifier',
-		'networkService',
-		'peersIdentifiers',
-		'lastMsgReceived',
-		'handledRoutingContexts'
+		'aspStateMachine'
 	],
 	#category : #'M3UA-Core'
 }
-
-{ #category : #'instance creation' }
-M3UAApplicationServerProcess class >> initWith: aService [
-	^ self new
-		networkService: aService;
-		yourself
-]
-
-{ #category : #'instance creation' }
-M3UAApplicationServerProcess class >> new [
-	^ super new
-		initialize;
-		yourself
-]
-
-{ #category : #access }
-M3UAApplicationServerProcess >> addRoutingContext: anInteger [
-	handledRoutingContexts addLast: anInteger
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> applicationServer [
-	^ applicationServer
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> applicationServer: anObject [
-	applicationServer := anObject
-]
 
 { #category : #'Primitives-LayerManagement-ASP' }
 M3UAApplicationServerProcess >> aspActive [
@@ -79,39 +47,39 @@ M3UAApplicationServerProcess >> aspActive [
    Purpose: LM requests that ASP send an ASP Active message to its peer."
 
 	^ self
-		aspActiveWithTrafficModeType: self trafficModeType
-		routingContexts: OrderedCollection new
+		aspActiveWithRoutingContexts: OrderedCollection new
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> aspActiveWithTrafficModeType: anIntegerTrafficMode routingContexts: aCollectionOfIntegerRC [
+M3UAApplicationServerProcess >> aspActiveWithRoutingContexts: aCollectionOfIntegerRC [
 	"M-ASP_ACTIVE request
    Direction: LM -> M3UA
    Purpose: LM requests that ASP send an ASP Active message to its peer."
 
 	| msg |
-	self
-		logDebug: self class name , '/' , self name , ' aspActive.'
-		area: #m3ua.
+	"debug"
+	self logDebug: ' asp Active'.
+	"end debug"
+	
 	self checkNextState: M3UAAspStateActive.
 	self aspStateMachine aspAC: 'Link is active'.
+	
+	"ACTIVE message creation"
 	msg := M3UAASPActiveMessage newMessage
 		addTag:
 			(M3UATagINFOString new
 				data: ('ASP is ACTIVE : ' , self name) asByteArray);
 		yourself.
-	anIntegerTrafficMode
-		ifNotNil: [ msg
-				addTag:
-					(M3UATagASPTMAspActiveTrafficModeType
-						initWithInteger32: anIntegerTrafficMode) ].
+	msg
+		addTag:
+			(M3UATagTrafficModeType
+				initWithInteger32: self host trafficModeType).
 	aCollectionOfIntegerRC
 		do:
 			[ :anIntegerRC | msg addTag: (M3UATagRoutingContext initWithInteger32: anIntegerRC) ].
 
-	"envoi du msg"
-	msg originAspIdentifier: self identifier.
-	self sendToPeer: msg
+	"Send message"
+	self sendASPSMOrASPTMMessageToPeer: msg
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -132,7 +100,30 @@ M3UAApplicationServerProcess >> aspDown [
 		yourself.
 		
 	"envoi du msg"
-	self sendToPeer: msg
+	self sendASPSMOrASPTMMessageToPeer: msg
+]
+
+{ #category : #'Primitives-LayerManagement-ASP' }
+M3UAApplicationServerProcess >> aspHeartbeat [
+	"M-HEARTBEAT request
+   Direction: LM -> M3UA
+   Purpose: LM requests that ASP send an ASP HEARTBEAT message to its peer."
+
+	| msg |
+	self
+		logDebug: self class name , '/', self name, ' aspHeartbeat.'
+		area: #m3ua.
+		
+	"message creation"
+	msg := M3UAASPHeartbeatMessage newMessage
+		addTag:
+			(M3UATagHeartbeatData
+				initDataWithThreeInteger32bits: (Array with: 0 with: 0 with: Time totalSeconds));
+		yourself.
+
+		
+	"envoi du msg"
+	self sendASPSMOrASPTMMessageToPeer: msg
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -153,47 +144,7 @@ M3UAApplicationServerProcess >> aspInactive [
 		   yourself.
 		
 	"envoi du msg"
-	self sendToPeer: msg
-]
-
-{ #category : #callbacks }
-M3UAApplicationServerProcess >> aspIsActivated [
-		self
-		logDebug:
-			self class name , ' (' , self name
-				, ' has received an ACTIVE ACK msg from its peer'
-		area: #m3ua.
-
-]
-
-{ #category : #callbacks }
-M3UAApplicationServerProcess >> aspIsDown [
-		self
-		logDebug:
-			self class name , ' (' , self name
-				, ' has received a DOWN ACK msg from its peer'
-		area: #m3ua.
-
-]
-
-{ #category : #callbacks }
-M3UAApplicationServerProcess >> aspIsInactivated [
-		self
-		logDebug:
-			self class name , ' (' , self name
-				, ' has received an INACTIVE ACK msg from its peer'
-		area: #m3ua.
-
-]
-
-{ #category : #callbacks }
-M3UAApplicationServerProcess >> aspIsUp [
-		self
-		logDebug:
-			self class name , ' (' , self name
-				, ' has received an UP ACK msg from its peer'
-		area: #m3ua.
-
+	self sendASPSMOrASPTMMessageToPeer: msg
 ]
 
 { #category : #accessing }
@@ -225,9 +176,11 @@ M3UAApplicationServerProcess >> aspUp [
    message to its peer."
 
 	| msg |
-	self
-		logDebug: self class name, '/', self name, ' aspUp.'
-		area: #m3ua.
+	
+	"debug"
+	self logDebug: ' aspUp.'.
+	"end debug"
+	
 	self checkNextState: M3UAAspStateInactive.
 	self aspStateMachine aspUP: 'Link is up'.
 	msg := M3UAASPUpMessage newMessage
@@ -236,7 +189,7 @@ M3UAApplicationServerProcess >> aspUp [
 		yourself.
 		
 	"envoi du msg"
-	self sendToPeer: msg
+	self sendASPSMOrASPTMMessageToPeer: msg
 ]
 
 { #category : #private }
@@ -260,17 +213,12 @@ M3UAApplicationServerProcess >> checkNextState: nextStateClass [
 						with: nextStateClass) ]
 ]
 
-{ #category : #'Primitives-RK (creation)' }
-M3UAApplicationServerProcess >> createDeregistrationRequestWith: aRoutingContext [
+{ #category : #'Primitives-RKM (creation)' }
+M3UAApplicationServerProcess >> createDeregistrationRequestWith: aCollectionOfRoutingContexts [
 	| msg |
-	msg := M3UARegistrationRequestMessage newMessage.
-	msg addTag: (M3UATagRoutingContext initWithInteger32: aRoutingContext).
+	msg := M3UADeregistrationRequestMessage newMessage.
+	aCollectionOfRoutingContexts do: [:rc | msg addTag: (M3UATagRoutingContext initWithInteger32: rc)].
 	^ msg
-]
-
-{ #category : #tags }
-M3UAApplicationServerProcess >> createInfoTag [
-	^ M3UATagINFOString new data: 'Hello from Smalltalk' asByteArray
 ]
 
 { #category : #'Primitives MTP3-User (creation)' }
@@ -384,46 +332,14 @@ M3UAApplicationServerProcess >> createMTPStatusSCONRequestPrimitiveWithRoutingCo
 	^ msg
 ]
 
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPTransferRequestPrimitiveWithData: aByteArray routingContext: anInteger opc: anIntegerOPC dpc: anIntegerDPC si: anIntegerSI ni: anIntegerNI mp: anIntegerMP sls: anIntegerSLS [
-	| msg routingContextTag protocolDataTag |
-	msg := M3UAPayloadDataMessage newMessage.
-	anInteger
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anInteger.
-			msg addTag: routingContextTag ].
-	protocolDataTag := M3UATagProtocolData
-		userData: aByteArray
-		opc: anIntegerOPC
-		dpc: anIntegerDPC
-		si: anIntegerSI
-		ni: anIntegerNI
-		mp: anIntegerMP
-		sls: anIntegerSLS.
-	msg addTag: protocolDataTag.
-	^ msg
-]
-
-{ #category : #'Primitives-RK (creation)' }
-M3UAApplicationServerProcess >> createRegistrationRequestWith: aCollectionOfRoutingKey [
+{ #category : #'Primitives-RKM (creation)' }
+M3UAApplicationServerProcess >> createRegistrationRequestWith: aCollectionOfRoutingKeys [
 	| msg |
 	msg := M3UARegistrationRequestMessage newMessage.
-	aCollectionOfRoutingKey
-		do: [ :aRoutingKey | self addRoutingKey: aRoutingKey toRKMMessage: msg ].
+	aCollectionOfRoutingKeys
+		do:
+			[ :aRoutingKey | msg addTag: (M3UATagRoutingKey fromRoutingKey: aRoutingKey) ].
 	^ msg
-]
-
-{ #category : #access }
-M3UAApplicationServerProcess >> dispatchData: aByteArray originAspIdentifier: anIdentifier [
-	| msg |
-	msg := M3UAMSG parseToClassFromStream: aByteArray.
-	msg originAspIdentifier: anIdentifier.
-	msg dispatchOnAsp: self.
-	
-	"for debug/tests"
-	self halt.
-	lastMsgReceived := msg
-
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -448,6 +364,17 @@ M3UAApplicationServerProcess >> handleAspDownAck: aMsg [
 	t_ack ifNotNil: [t_ack cancel].
 	self moveToState: M3UAAspStateDown.
 	self callNotification: asp_down_block
+]
+
+{ #category : #'Primitives-LayerManagement-ASP' }
+M3UAApplicationServerProcess >> handleAspHeartbeatAck: aMsg [
+	"M-ASP_HEARTBEAT confirm
+   Direction: M3UA -> LM
+   Purpose: ASP reports that it has received an ASP Heartbeat Ack message
+   from its peer."
+
+	t_ack ifNotNil: [t_ack cancel].
+	self callNotification: asp_heartbeat_block
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -478,8 +405,10 @@ M3UAApplicationServerProcess >> handleAspUpAck: aMsg [
 M3UAApplicationServerProcess >> handleError: aMsg [
 	"Cancel pending operations.. because something went wrong"
 
-	t_ack cancel.
-	error_block ifNotNil: [ error_block value: aMsg ]
+	t_ack ifNotNil: [t_ack cancel].
+	error_block ifNotNil: [ error_block value: aMsg ].
+	self host receiveErrorMessage: aMsg
+
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -488,48 +417,15 @@ M3UAApplicationServerProcess >> handleNotify: aMsg [
 	self
 		logDebug: self class name, '/', self name, ' has received a NOTIFY msg.'
 		area: #m3ua.
+	self host receiveNotifyMessage: aMsg
 
-]
-
-{ #category : #handling }
-M3UAApplicationServerProcess >> handleUnknownMessage: aMsg [
-	"We got something we don't know. ignore it for now."
-
-	
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> handledRoutingContexts [
-	^ handledRoutingContexts
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> identifier [
-	^ identifier
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> identifier: anObject [
-	identifier := anObject
 ]
 
 { #category : #initialization }
 M3UAApplicationServerProcess >> initialize [
 	super initialize.
 	mtp3Boundary := M3UAMTPLevel3Boundary on: self.
-	aspStateMachine := M3UAAspStateMachine onAsp: self.
-	peersIdentifiers := OrderedCollection new.
-	handledRoutingContexts := OrderedCollection new
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> lastMsgReceived [
-	^ lastMsgReceived
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> lastMsgReceived: aMsg [
-	lastMsgReceived := aMsg
+	aspStateMachine := M3UAAspStateMachine onAsp: self
 ]
 
 { #category : #private }
@@ -550,29 +446,6 @@ M3UAApplicationServerProcess >> moveToState: newStateClass [
 { #category : #accessing }
 M3UAApplicationServerProcess >> mtp3Boundary [
 	^ mtp3Boundary
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> name [
-	^ name
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> name: anObject [
-	name := anObject
-]
-
-{ #category : #access }
-M3UAApplicationServerProcess >> networkService [
-	^ networkService
-]
-
-{ #category : #access }
-M3UAApplicationServerProcess >> networkService: aService [
-	networkService := aService.
-	networkService
-		onSctpConnect: [ self sctpConnected ];
-		onSctpRelease: [ self sctpReleased ]
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -597,6 +470,18 @@ M3UAApplicationServerProcess >> onAspDown: aBlock [
    from its peer."
 
 	asp_down_block := aBlock
+]
+
+{ #category : #'Primitives-LayerManagement-ASP' }
+M3UAApplicationServerProcess >> onAspHeartbeat: aBlock [
+	"Callback that will be used when we will receive an #handleAspHeartbeatAck: message.
+	
+	M-ASP_HEARTBEAT confirm
+   Direction: M3UA -> LM
+   Purpose: ASP reports that it has received an ASP Heartbeat Ack message
+   from its peer."
+
+	asp_heartbeat_block := aBlock
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -709,9 +594,10 @@ M3UAApplicationServerProcess >> onSctpStatus: aBlock [
 	sctp_status_block := aBlock
 ]
 
-{ #category : #accessing }
-M3UAApplicationServerProcess >> peersIdentifiers [
-	^ peersIdentifiers
+{ #category : #sending }
+M3UAApplicationServerProcess >> resendingPeriod [
+	debugOn ifTrue: [ ^ 34 ].
+	^ 2
 ]
 
 { #category : #access }
@@ -778,10 +664,14 @@ M3UAApplicationServerProcess >> sctpStatus [
 ]
 
 { #category : #sending }
-M3UAApplicationServerProcess >> sendToPeer: aMsg [
+M3UAApplicationServerProcess >> sendASPSMOrASPTMMessageToPeer: aM3UAMessage [
+	"Use this method for sending messages which expects a ACK in reply,
+	like ASPSM and ASPTM messages"
+	
+	| peer |
 	t_ack ifNotNil: [ t_ack cancel ].
 	t_ack := TimerScheduler instance
-		scheduleInSeconds: 2
+		scheduleInSeconds: self resendingPeriod
 		block: [ "Re-send the message"
 			self
 				logNotice:
@@ -789,8 +679,15 @@ M3UAApplicationServerProcess >> sendToPeer: aMsg [
 						expandMacrosWith: networkService hostname
 						with: networkService port)
 				area: #m3ua.
-			self sendToPeer: aMsg ].
-	networkService sendToPeer: aMsg from: self
+			self sendASPSMOrASPTMMessageToPeer: aM3UAMessage ].
+	(peer := self host targetPeerForASP: self)
+		ifNil: [ t_ack cancel.
+			^ self
+				logError:
+					'Enable to find a peer to send the message ' , aM3UAMessage class name
+						, ' from ' , self name
+				area: #m3ua ].
+	networkService send: aM3UAMessage from: self toTargetPeer: peer
 ]
 
 { #category : #access }
@@ -800,5 +697,5 @@ M3UAApplicationServerProcess >> state [
 
 { #category : #access }
 M3UAApplicationServerProcess >> trafficModeType [
-	^ applicationServer trafficModeTypeForASP: self
+	^ self host configuration trafficModeType
 ]

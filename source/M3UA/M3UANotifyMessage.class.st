@@ -10,7 +10,13 @@ M3UANotifyMessage class >> messageTag [
 
 ]
 
+{ #category : #access }
+M3UANotifyMessage >> aspIdentifier [
+	^ (self findTag: M3UAConstants tagASPIdentifier ifAbsent: [ ^ nil ])
+		data asArray
+]
+
 { #category : #'m3ua-asp-dispatch' }
-M3UANotifyMessage >> dispatchOnAsp: anAsp [
+M3UANotifyMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp handleNotify: self
 ]

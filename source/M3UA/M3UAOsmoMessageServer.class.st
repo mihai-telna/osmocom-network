@@ -1,5 +1,5 @@
 Class {
-	#name : #OsmoMessageServerM3UA,
+	#name : #M3UAOsmoMessageServer,
 	#superclass : #OsmoMessageServer,
 	#instVars : [
 		'networkService',
@@ -9,12 +9,13 @@ Class {
 }
 
 { #category : #initialization }
-OsmoMessageServerM3UA >> acceptOneConnection [
-	| client conn socketStream delegate s6aService |
+M3UAOsmoMessageServer >> acceptOneConnection [
+	| client conn socketStream delegate |
 	client := socket waitForAcceptFor: 60.
 	client ifNil: [ ^ self ].
 
 	"--- debug ---"
+	self logDebug: '#acceptOneConnection'.
 	"--- end debug ---"
 
 	socketStream := (SocketStream on: client)
@@ -25,7 +26,7 @@ OsmoMessageServerM3UA >> acceptOneConnection [
 		errorDelegate: self;
 		socket: socketStream;
 		yourself.
-	delegate := OsmoMessageReadDelegateM3UA new
+	delegate := M3UAOsmoMessageReadDelegate new
 		m3uaConnection: networkService;
 		yourself.
 	delegate
@@ -39,33 +40,44 @@ OsmoMessageServerM3UA >> acceptOneConnection [
 		ifCurtailed: [ self removeAndTerminateConnection: conn ]
 ]
 
-{ #category : #adding }
-OsmoMessageServerM3UA >> addDelegates: aCollectionOfOsmoMessageReadDelegateM3UA forAsp: anAsp [
-	dicoDelegates at: anAsp put: aCollectionOfOsmoMessageReadDelegateM3UA
+{ #category : #initialization }
+M3UAOsmoMessageServer >> addDelegate: aDelegate [
+	| number |
+	dicoDelegates
+		at: (number := dicoDelegates keys size + 1)
+		put: aDelegate.
+	aDelegate channelNumber: number
+]
+
+{ #category : #access }
+M3UAOsmoMessageServer >> delegateForChannel: anInteger [
+	^ dicoDelegates at: anInteger ifAbsent: [ nil ]
 ]
 
 { #category : #accessing }
-OsmoMessageServerM3UA >> dicoDelegates [
+M3UAOsmoMessageServer >> dicoDelegates [
 	^ dicoDelegates
 ]
 
-{ #category : #accessing }
-OsmoMessageServerM3UA >> dicoDelegates: anObject [
-	dicoDelegates := anObject
-]
-
 { #category : #initialization }
-OsmoMessageServerM3UA >> initialize [
+M3UAOsmoMessageServer >> initialize [
 	super initialize.
 	dicoDelegates := Dictionary new
 ]
 
+{ #category : #debug }
+M3UAOsmoMessageServer >> logDebug: aString [
+	networkService
+		logDebug: self class name , '(' , networkService logicalProcess name , ') : ' , aString
+		area: #m3ua
+]
+
 { #category : #accessing }
-OsmoMessageServerM3UA >> networkService [
+M3UAOsmoMessageServer >> networkService [
 	^ networkService
 ]
 
 { #category : #accessing }
-OsmoMessageServerM3UA >> networkService: anObject [
+M3UAOsmoMessageServer >> networkService: anObject [
 	networkService := anObject
 ]

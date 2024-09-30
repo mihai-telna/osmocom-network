@@ -82,7 +82,7 @@ M3UAMSGTests >> testParseMessage [
 	self assert: msg class equals: M3UAASPActiveMessage.
 	self assert: msg msgClass equals: M3UAASPActiveMessage messageClass.
 	self assert: msg msgType equals: M3UAConstants typeAspTmASPAC.
-	self assert: (tagTrafficMode := msg findTag: M3UAConstants tagASPTMAspActiveTrafficMode) notNil.
+	self assert: (tagTrafficMode := msg findTag: M3UAConstants tagTrafficModeType) notNil.
 	self assert: tagTrafficMode isLoadshare.
 	self assert: (tagRoutingContext := msg findTag: M3UAConstants tagMGMTNotifyRoutingContext) notNil.
 	self assert: tagRoutingContext data asInteger equals: 56.	
@@ -92,7 +92,7 @@ M3UAMSGTests >> testParseMessage [
 	self assert: msg class equals: M3UAASPActiveAckMessage.
 	self assert: msg msgClass equals: M3UAASPActiveAckMessage messageClass.
 	self assert: msg msgType equals: M3UAConstants typeAspTmASPACACK.
-	self assert: (tagTrafficMode := msg findTag: M3UAConstants tagASPTMAspActiveTrafficMode) notNil.
+	self assert: (tagTrafficMode := msg findTag: M3UAConstants tagTrafficModeType) notNil.
 	self assert: tagTrafficMode isLoadshare.
 	self assert: (tagRoutingContext := msg findTag: M3UAConstants tagMGMTNotifyRoutingContext) notNil.
 	self assert: tagRoutingContext data asInteger equals: 56.	
@@ -131,5 +131,63 @@ M3UAMSGTests >> testParseMessage [
   
 
 
+	
+]
+
+{ #category : #tests }
+M3UAMSGTests >> testParseMessageRecursiveTag [
+	|  routingKeyTag buffer byteArray readTag tagLocalRoutingKeyIdentifier tagRoutingContext tagTrafficModeType tagNetworkAppearance tagServiceIndicators tagOriginatingPointCodeList tagDestinationPointCode routingKeys msg readMsg tags |
+	routingKeys := M3UAApplicationServerProcessTest
+		routingKeysWithTrafficModeType: M3UAASConfiguration defaultTrafficModeType.
+	routingKeyTag := M3UATagRoutingKey fromRoutingKey: routingKeys first.
+	
+	"writing"
+	buffer := MessageBuffer new.
+	routingKeyTag writeOn: buffer.
+	byteArray := buffer asByteArray.
+	
+	"reading"
+	readTag := M3UATag parseToClassFromStream: byteArray readStream.
+	self assert: readTag class equals: M3UATagRoutingKey.
+	tagLocalRoutingKeyIdentifier := readTag findTag: M3UAConstants tagLocalRoutingKeyIdentifier.
+	self assert: tagLocalRoutingKeyIdentifier notNil.
+	self assert: tagLocalRoutingKeyIdentifier data asInteger equals: 1.
+	tagRoutingContext := readTag findTag: M3UAConstants tagRoutingContext.
+	self assert: tagRoutingContext notNil.
+	self assert: tagRoutingContext data asInteger equals: 12345.
+	tagTrafficModeType := readTag findTag: M3UAConstants tagTrafficModeType.
+	self assert: tagTrafficModeType notNil.
+	self assert: tagTrafficModeType data asInteger equals: M3UAASConfiguration defaultTrafficModeType.
+	tagNetworkAppearance := readTag findTag: M3UAConstants tagNetworkAppearance.
+	self assert: tagNetworkAppearance notNil.
+	self assert: tagNetworkAppearance data asInteger equals: 777.
+	tagServiceIndicators :=readTag findTag: M3UAConstants tagServiceIndicators.
+	self assert: tagServiceIndicators notNil.
+	self assert: (tagServiceIndicators data asArray includes: 12).
+	self assert: (tagServiceIndicators data asArray includes: 34).
+	tagOriginatingPointCodeList := readTag findTag: M3UAConstants tagOriginatingPointCodeList.
+	self assert: tagOriginatingPointCodeList notNil.
+	self assert:  (tagOriginatingPointCodeList data copyFrom: 1 to: 4) asInteger equals: 33333.
+	self assert:  (tagOriginatingPointCodeList data copyFrom: 5 to: 8) asInteger equals: 44444.
+	tagDestinationPointCode := readTag findTag: M3UAConstants tagDestinationPointCode.
+	self assert: tagDestinationPointCode notNil.
+	self assert: tagDestinationPointCode data asInteger equals: 11111.
+	
+	"message"
+	msg := M3UARegistrationRequestMessage newMessage.
+	routingKeys
+		do:
+			[ :aRoutingKey | msg addTag: (M3UATagRoutingKey fromRoutingKey: aRoutingKey) ].
+		
+	"writing"
+	buffer := MessageBuffer new.
+	msg writeOn: buffer.
+	byteArray := buffer asByteArray.
+	
+	"reading"
+	readMsg := M3UAMSG parseToClassFromStream: byteArray readStream.
+	self assert: readMsg class equals: M3UARegistrationRequestMessage.
+	tags := readMsg findAllTags: M3UAConstants tagRoutingKey.
+	self assert: tags size equals: 2
 	
 ]

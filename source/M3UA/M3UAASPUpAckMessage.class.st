@@ -10,7 +10,13 @@ M3UAASPUpAckMessage class >> messageTag [
 
 ]
 
+{ #category : #access }
+M3UAASPUpAckMessage >> aspIdentifier [
+	^ (self findTag: M3UAConstants tagASPIdentifier ifAbsent: [ ^ nil ])
+		data asArray
+]
+
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPUpAckMessage >> dispatchOnAsp: anAsp [
-	anAsp handleAspUpAck: self
+M3UAASPUpAckMessage >> dispatchOnLogicalProcess: aLogicalEntityProcess [
+	aLogicalEntityProcess handleAspUpAck: self
 ]

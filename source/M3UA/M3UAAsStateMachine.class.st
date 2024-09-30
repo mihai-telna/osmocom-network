@@ -8,7 +8,10 @@ Class {
 		'recoveryTimer',
 		'recoveryTimerDelayMax',
 		'rt_proc',
-		'logger'
+		'logger',
+		'lastEventReceived',
+		'statusType',
+		'statusInformation'
 	],
 	#category : #'M3UA-States'
 }
@@ -18,8 +21,49 @@ M3UAAsStateMachine class >> initialState [
 	^ M3UAAsStateDown
 ]
 
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoASPFailure [
+	^ 'ASP Failure'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoAlternateASPActive [
+	^ 'Alternate ASP Active'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoAsActive [
+	^ 'Application Server Active (AS-ACTIVE)'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoAsInactive [
+	^ 'Application Server Inactive (AS-INACTIVE)'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoAsPending [
+	^ 'Application Server Pending (AS-PENDING)'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusInfoInsufficientResources [
+	^ 'Insufficient ASP Resources Active in AS'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusTypeApplicationServerStateChange [
+	^ 'AS-State_Change'
+]
+
+{ #category : #access }
+M3UAAsStateMachine class >> statusTypeOther [
+	^ 'Other'
+]
+
 { #category : #events }
 M3UAAsStateMachine >> ac2PN: anEvent [
+	lastEventReceived := anEvent.
 	state onAC2PN: anEvent
 ]
 
@@ -38,12 +82,13 @@ M3UAAsStateMachine >> aspStateMachines: aCollection [
 M3UAAsStateMachine >> delayRecoveryTimerIsOver [
 	| n |
 	n := Time totalSeconds - recoveryTimer.
-	logger logDebug: 'Recovery timer : ' with: {('delay remaining' -> n)}.
+	logger logDebug: 'Recovery timer : ' with: {('elapsed time' -> n)}.
 	^ n > self recoveryTimerDelayMax
 ]
 
 { #category : #events }
 M3UAAsStateMachine >> dn2IA: anEvent [
+	lastEventReceived := anEvent.
 	state onDN2IA: anEvent
 ]
 
@@ -56,7 +101,6 @@ M3UAAsStateMachine >> entered: aState [
 M3UAAsStateMachine >> handleAnnoucement: aM3UAAspStateChangeAnnouncement [
 	| newAspStateClass |
 	newAspStateClass := aM3UAAspStateChangeAnnouncement newState class.
-	
 	logger
 		logDebug: 'Annoucement for'
 		with:
@@ -66,18 +110,29 @@ M3UAAsStateMachine >> handleAnnoucement: aM3UAAspStateChangeAnnouncement [
 	"state AS -  Down"
 	state class = M3UAAsStateDown
 		ifTrue: [ newAspStateClass = M3UAAspStateInactive
-				ifTrue: [ self dn2IA: 'One ASP is UP' ] ].
+				ifTrue: [ self dn2IA: 'One ASP is UP'.
+					statusType := self class statusTypeApplicationServerStateChange.
+					statusInformation := self class statusInfoAsInactive.
+					^ self ] ].
 
 	"state AS -  Inactive"
 	state class = M3UAAsStateInactive
 		ifTrue: [ newAspStateClass = M3UAAspStateActive
 				ifTrue: [ (self numberOfAspsInStatus: M3UAAspStateActive)
 						>= self requiredNumberOfAsps
-						ifTrue: [ self ia2AC: 'Enough ASP are active' ] ].
+						ifTrue: [ self ia2AC: 'Enough ASP are active'.
+							statusType := self class statusTypeApplicationServerStateChange.
+							statusInformation := self class statusInfoAsActive.
+							^ self ]
+						ifFalse: [ "AS stays in AS-INACTIVE"
+							statusType := self class statusTypeOther.
+							statusInformation := self class statusInfoInsufficientResources.
+							^ self ] ].
 			newAspStateClass = M3UAAspStateDown
 				ifTrue: [ (self numberOfAspsInStatus: M3UAAspStateDown)
 						= aspStateMachines size
-						ifTrue: [ self ia2DN: 'All ASP are down' ] ] ].
+						ifTrue: [ self ia2DN: 'All ASP are down'.
+							^ self ] ] ].
 
 	"state AS -  Active"
 	state class = M3UAAsStateActive
@@ -85,14 +140,20 @@ M3UAAsStateMachine >> handleAnnoucement: aM3UAAspStateChangeAnnouncement [
 				or: [ newAspStateClass = M3UAAspStateDown ])
 				ifTrue: [ (self numberOfAspsInStatus: M3UAAspStateActive) = 0
 						ifTrue: [ self startRecoveryTimer.
-							self ac2PN: 'No ASP are still active' ] ] ].
+							self ac2PN: 'No ASP are still active'.
+							statusType := self class statusTypeApplicationServerStateChange.
+							statusInformation := self class statusInfoAsPending.
+							^ self ] ] ].
 
 	"state AS -  Pending"
 	state class = M3UAAsStatePending
 		ifTrue: [ (newAspStateClass = M3UAAspStateActive
 				and: [ self delayRecoveryTimerIsOver not ])
 				ifTrue: [ self stopRecoveryTimer.
-					self pn2AC: 'AS is active again' ] ]
+					self pn2AC: 'AS is active again'.
+					statusType := self class statusTypeApplicationServerStateChange.
+					statusInformation := self class statusInfoAsActive.
+					^ self ] ]
 ]
 
 { #category : #announcements }
@@ -118,11 +179,13 @@ M3UAAsStateMachine >> handleAnnouncements [
 
 { #category : #events }
 M3UAAsStateMachine >> ia2AC: anEvent [
+	lastEventReceived := anEvent.
 	state onIA2AC: anEvent
 ]
 
 { #category : #events }
 M3UAAsStateMachine >> ia2DN: anEvent [
+	lastEventReceived := anEvent.
 	state onIA2DN: anEvent
 ]
 
@@ -164,16 +227,19 @@ M3UAAsStateMachine >> numberOfAspsInStatus: aStateClass [
 
 { #category : #events }
 M3UAAsStateMachine >> pn2AC: anEvent [
+	lastEventReceived := anEvent.
 	state onPN2AC: anEvent
 ]
 
 { #category : #events }
 M3UAAsStateMachine >> pn2DN: anEvent [
+	lastEventReceived := anEvent.
 	state onPN2DN: anEvent
 ]
 
 { #category : #events }
 M3UAAsStateMachine >> pn2IA: anEvent [
+	lastEventReceived := anEvent.
 	state onPN2IA: anEvent
 ]
 
@@ -223,9 +289,37 @@ M3UAAsStateMachine >> state [
 	^ state
 ]
 
+{ #category : #accessing }
+M3UAAsStateMachine >> statusInformation [
+	^ statusInformation
+]
+
+{ #category : #accessing }
+M3UAAsStateMachine >> statusType [
+	^ statusType
+]
+
 { #category : #'recovery timer' }
 M3UAAsStateMachine >> stopRecoveryTimer [
-	recoveryTimer := nil
+	recoveryTimer := nil.
+	rt_proc terminate.
+	rt_proc := nil
+]
+
+{ #category : #miscellaneous }
+M3UAAsStateMachine >> tagNotifyInformation [
+	statusInformation = self class statusInfoAsActive
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoAsActive ].
+	statusInformation = self class statusInfoAsInactive
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoAsInactive ].
+	statusInformation = self class statusInfoAsPending
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoAsPending ].
+	statusInformation = self class statusInfoInsufficientResources
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoInsufficientASPResourcesActiveInAS ].
+	statusInformation = self class statusInfoASPFailure
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoASPFailure ].
+	statusInformation = self class statusInfoAlternateASPActive
+		ifTrue: [ ^ M3UATagMGMTNotifyStatus infoAlternateASPActive ]
 ]
 
 { #category : #'recovery timer' }
@@ -235,8 +329,9 @@ M3UAAsStateMachine >> updateStateWhenRecoveryTimerIsOver [
 	| n |
 	self delayRecoveryTimerIsOver
 		ifFalse: [ ^ self ].
-		
-	logger logDebug: 'Recovery timer : ' with: {('Delay is over : ' -> true)}.
+	logger
+		logDebug: 'Recovery timer : '
+		with: {('Delay is over : ' -> true)}.
 
 	"RFC4666
 	AS-PENDING: If an ASP becomes ASP-ACTIVE before
@@ -247,6 +342,8 @@ M3UAAsStateMachine >> updateStateWhenRecoveryTimerIsOver [
 				logDebug: 'Move to sate AS-ACTIVE again : '
 				with: {('Number of active ASP' -> n)}.
 			self pn2AC: 'AS is active again'.
+			statusType := self class statusTypeApplicationServerStateChange.
+			statusInformation := self class statusInfoAsActive.
 			^ self ].
 
 	"RFC4666
@@ -258,7 +355,9 @@ M3UAAsStateMachine >> updateStateWhenRecoveryTimerIsOver [
 		ifTrue: [ logger
 				logDebug: 'Move to sate AS-INACTIVE again : '
 				with: {('Number of inactive ASP' -> n)}.
-			self pn2IA: 'AS is inactive again' ]
+			self pn2IA: 'AS is inactive again'.
+			statusType := self class statusTypeApplicationServerStateChange.
+			statusInformation := self class statusInfoAsInactive ]
 		ifFalse: [ logger
 				logDebug: 'Move to sate AS-DOWN : '
 				with: {('Number of inactive ASP' -> n)}.

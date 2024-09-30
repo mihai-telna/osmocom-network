@@ -11,6 +11,6 @@ M3UADestinationUnavailableMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UADestinationUnavailableMessage >> dispatchOnAsp: anAsp [
+M3UADestinationUnavailableMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp mtp3Boundary handleDestinationUnavailable: self
 ]

@@ -11,6 +11,6 @@ M3UAErrorMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAErrorMessage >> dispatchOnAsp: anAsp [
+M3UAErrorMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp handleError: self
 ]

@@ -1,17 +1,21 @@
 Class {
 	#name : #M3UATagRegistrationResult,
-	#superclass : #M3UATag,
+	#superclass : #M3UATagWithSubTags,
 	#category : #'M3UA-Tags'
 }
 
 { #category : #'instance creation' }
 M3UATagRegistrationResult class >> initWithLocalRKIdentifier: anIntegerRKIdentifier registrationStatus: anIntegerStatus routingContext: anIntegerRC [
-	^ self
-		initWithThreeInteger32:
-			(Array
-				with: anIntegerRKIdentifier
-				with: anIntegerStatus
-				with: anIntegerRC)
+	| tag |
+	tag := self new.
+	tag
+		addTag:
+			(M3UATagLocalRoutingKeyIdentifier
+				initWithInteger32: anIntegerRKIdentifier).
+	tag
+		addTag: (M3UATagRegistrationStatus initWithInteger32: anIntegerStatus).
+	tag addTag: (M3UATagRoutingContext initWithInteger32: anIntegerRC).
+	^ tag
 ]
 
 { #category : #access }

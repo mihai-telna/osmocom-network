@@ -11,6 +11,6 @@ M3UAASPDownAckMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPDownAckMessage >> dispatchOnAsp: anAsp [
+M3UAASPDownAckMessage >> dispatchOnLogicalProcess: anAsp [
 	anAsp handleAspDownAck: self
 ]
