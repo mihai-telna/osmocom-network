@@ -1,3 +1,6 @@
+"
+M3UAASPHeartbeatMessage can be sent by SGP or ASP
+"
 Class {
 	#name : #M3UAASPHeartbeatMessage,
 	#superclass : #M3UAASPSMMessage,

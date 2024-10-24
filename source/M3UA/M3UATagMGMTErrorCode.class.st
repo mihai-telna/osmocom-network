@@ -10,8 +10,18 @@ M3UATagMGMTErrorCode class >> invalidRoutingContextValue [
 ]
 
 { #category : #access }
+M3UATagMGMTErrorCode class >> missingParameter [
+	^ 16
+]
+
+{ #category : #access }
 M3UATagMGMTErrorCode class >> nrValue [
 	^ M3UAConstants tagMGMTErrorCode
+]
+
+{ #category : #access }
+M3UATagMGMTErrorCode class >> unsupportedMessageType [
+	^ 4
 ]
 
 { #category : #testing }

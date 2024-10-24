@@ -8,6 +8,11 @@ Class {
 	#category : #'M3UA-Tests'
 }
 
+{ #category : #access }
+M3UAApplicationServerProcessTest class >> fakeNetworkAppearance [
+	^ 777
+]
+
 { #category : #frames }
 M3UAApplicationServerProcessTest class >> m3uaAspAcAckFrame [
 	^ByteArray readHexFrom: '0100040300000018000b0008000000020006000800000038'
@@ -30,25 +35,25 @@ M3UAApplicationServerProcessTest class >> m3uaNotifyFrame [
 
 { #category : #access }
 M3UAApplicationServerProcessTest class >> routingKeysWithTrafficModeType: anInteger [
-	| rc1 rc2 routingKey1 routingKey2 |
-	rc1 := 12345.
-	rc2 := 67890.
+	| rc1Id rc2Id routingKey1 routingKey2 |
+	rc1Id := 12345.
+	rc2Id := 67890.
 	
 	routingKey1 := M3UARoutingKey dpc: 11111.
 	routingKey1 localRKIdentifier: 1.
 	routingKey1 listOpc: (OrderedCollection with: 33333 with: 44444).
-	routingKey1 routingContext: rc1.
+	routingKey1 routingContextId: rc1Id.
 	routingKey1 trafficModeType: anInteger.
 	routingKey1 serviceIndicators: #(12 34).
-	routingKey1 networkAppearance: 777.
+	routingKey1 networkAppearance: self fakeNetworkAppearance.
 	
 	routingKey2 := M3UARoutingKey dpc: 22222.
 	routingKey2 localRKIdentifier: 2.
 	routingKey2 listOpc: (OrderedCollection with: 55555 with: 66666).
-	routingKey2 routingContext: rc2.
+	routingKey2 routingContextId: rc2Id.
 	routingKey2 trafficModeType: anInteger.
 	routingKey2 serviceIndicators: #(45 56).
-	routingKey2 networkAppearance: 888.
+	routingKey2 networkAppearance: self fakeNetworkAppearance.
 	
 	^ OrderedCollection with: routingKey1 with: routingKey2
 ]
@@ -76,6 +81,38 @@ M3UAApplicationServerProcessTest >> copyOfApplicationServer: anAS [
 	newAS asStateMachine
 		recoveryTimerDelayMax: as asStateMachine recoveryTimerDelayMax.
 	^ newAS
+]
+
+{ #category : #configuration }
+M3UAApplicationServerProcessTest >> createFakePayloadDataWith: aByteArray [
+	^ PayloadData new
+		data: aByteArray;
+		networkAppearance: self class fakeNetworkAppearance;
+		routingContextId: 29384;
+		opc: 61;
+		dpc: 20;
+		serviceIndicator: 3;
+		networkIndicator: 3;
+		messagePriority: 0;
+		sls: 9;
+		correlationId: 28;
+		yourself
+]
+
+{ #category : #configuration }
+M3UAApplicationServerProcessTest >> createFakePayloadDataWith: aByteArray opc: anIntegerOPC dpc: anIntegerDPC routingContextId: anIntegerRC logicalProcess: aLogicalProcess [
+	^ PayloadData new
+		data: aByteArray;
+		networkAppearance: self class fakeNetworkAppearance;
+		routingContextId: anIntegerRC;
+		opc: anIntegerOPC;
+		dpc: anIntegerDPC;
+		serviceIndicator: 3;
+		networkIndicator: 3;
+		messagePriority: 0;
+		sls: 9;
+		correlationId: 28;
+		yourself
 ]
 
 { #category : #configuration }
@@ -113,7 +150,7 @@ M3UAApplicationServerProcessTest >> initApplicationServerWithNumberOfASP: anInte
 	"static registration"
 	aBoolean
 		ifFalse: [ (self routingKeysForStaticRegistrationForAS: as)
-				do: [ :rK | as addRoutingKey: rK forRoutingContext: rK routingContext ] ].
+				do: [ :rK | as addRoutingKey: rK forRoutingContextId: rK routingContextId ] ].
 	^ as
 ]
 
@@ -143,8 +180,8 @@ M3UAApplicationServerProcessTest >> initForDirectConnectionAndNumberOfASPForAS: 
 		registerRemoteApplicationServer:
 			(newAS := self copyOfApplicationServer: as).
 	aBoolean
-		ifFalse: [ as dictRoutingContextRoutingKey
-				keysAndValuesDo: [ :rc :rK | newAS addRoutingKey: rK forRoutingContext: rc ] ].
+		ifFalse: [ as trafficManagement routingContexts do: [:rc |
+				rc routingKeys do: [ :rK | newAS addRoutingKey: rK forRoutingContextId: rc routingContextId ] ] ].
 
 	"configuration SG"
 	sgConfiguration := M3UASGConfiguration onServerGateway: sg.
@@ -183,11 +220,11 @@ M3UAApplicationServerProcessTest >> initServerGatewayOne [
 M3UAApplicationServerProcessTest >> notifyMessage [
 	| tagStatus |
 	tagStatus := M3UATagMGMTNotifyStatus
-		type: M3UATagMGMTNotifyStatus statusApplicationServerStateChange
+		type: M3UATagMGMTNotifyStatus typeApplicationServerStateChange
 		info: M3UATagMGMTNotifyStatus infoAsActive.
 	^ M3UANotifyMessage newMessage
 		addTag: tagStatus;
-		addTag: (M3UATagINFOString new data: 'NOTIFY masg !' asByteArray);
+		addTag: (M3UATagINFOString fromString: 'NOTIFY message !');
 		yourself
 ]
 
@@ -205,8 +242,8 @@ M3UAApplicationServerProcessTest >> routingKeysForStaticRegistrationForAS: anAS 
 { #category : #running }
 M3UAApplicationServerProcessTest >> tearDown [ 
 	super tearDown.
-	as registeredAsps do: [:asp | asp networkService ifNotNil: [ asp networkService stop ]].
-	sg registeredSgps do: [:sgp | sgp networkService ifNotNil: [ sgp networkService stop ]].
+	as ifNotNil: [as registeredAsps do: [:asp | asp networkService ifNotNil: [ asp networkService stop ]]].
+	sg ifNotNil: [sg registeredSgps do: [:sgp | sgp networkService ifNotNil: [ sgp networkService stop ]]].
 	Smalltalk garbageCollect
 
 ]
@@ -217,16 +254,13 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	Point to Point example (one route from AS to SG)"
 	
 
-	| delay asp layerManagement sgp payloadMsg tagInfoString payload |
-	delay := 200.
+	| asp sgp tagInfoString payload payloadData |
 	
 	"Server gateway process and application server process"
 	self initForDirectConnectionAndNumberOfASPForAS: 1 withDynamicRegistration: false.
 	asp := as registeredAsps first.
 	sgp := sg registeredSgps first.
-
-	"Create a Layer Managements (LM)"
-	layerManagement := M3UALayerManagement onManagedASP: asp.
+	as layerManagement manageASP: asp.
 
 	"SGP start listening incoming connections"		
 	sgp networkService start.
@@ -239,22 +273,22 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	
 	"ASP UP => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
-	layerManagement startASP: asp.
+	as layerManagement startASP: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStateInactive.
 	self assert: sgp lastMsgReceived class equals: M3UAASPUpMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPUpAckMessage.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagInfoString := as lastNotifyMessageReceived findTag: M3UAConstants tagINFOString.
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is INACTIVE'.
 
 	"ASP ACTIVE => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
 	asp aspActive.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	
 	self assert: asp aspStateMachine state class equals: M3UAAspStateActive.
 	self assert: as asStateMachine state class equals: M3UAAsStateActive.
@@ -265,40 +299,32 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is ACTIVE'.
 	
 	"sgp send a MTPTransfer message => test signalUnitData performed"
-	payloadMsg := sgp
-		createMTPTransferRequestPrimitiveWithData: (payload := self class m3uaAspAcAckFrame)
-		routingContext: 29
-		opc: 61
-		dpc: 20
-		si: 3
-		ni: 3
-		mp: 0
-		sls: 9.
-	sgp sendMessage: payloadMsg toPeer: as registeredAsps first. 
+	payload := self class m3uaAspAcAckFrame.
+	payloadData := self createFakePayloadDataWith: payload opc: 61 dpc: 20 routingContextId: 29384 logicalProcess: sgp.
+	sg layerManagement receivesTransfer: payloadData forLogicalProcess: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp lastMsgReceived class equals: M3UAPayloadDataMessage.
 	self assert: as lastPayloadReceived equals: payload.
-	
 
 	"ASP INACTIVE => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
 	asp aspInactive.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStatePending.
 
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: sgp lastMsgReceived class equals: M3UAASPInactiveMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPInactiveAckMessage.
 		
 	"wait recover time is over without any state machine modification"
 	(Delay forSeconds: as asStateMachine recoveryTimerDelayMax) wait.
-	(Delay forSeconds: 1) wait.
+	self waitBigDelay.
 	self assert: as asStateMachine state class equals: M3UAAsStateInactive.
 
 	"ASP DOWN => ASP and AS state machines will be updated"
 	asp aspDown.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	self assert: as asStateMachine state class equals: M3UAAsStateDown.
 	self assert: sgp lastMsgReceived class equals: M3UAASPDownMessage.
@@ -313,16 +339,13 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	Point to Point example (one route from AS to SG)"
 	
 
-	| delay asp layerManagement payloadMsg tagInfoString payload routingKeys registrationRequestMsg sgp tagsRC deregistrationRequestMsg remoteAS |
-	delay := 200.
+	| asp tagInfoString payload routingKeys registrationRequestMsg sgp tagsRC deregistrationRequestMsg remoteAS payloadData |
 	
 	"Server gateway process and application server process"
 	self initForDirectConnectionAndNumberOfASPForAS: 1 withDynamicRegistration: true.
 	asp := as registeredAsps first.
 	sgp := sg registeredSgps first.
-
-	"Create a Layer Managements (LM)"
-	layerManagement := M3UALayerManagement onManagedASP: asp.
+	as layerManagement manageASP: asp.
 
 	"SGP start listening incoming connections"		
 	sgp networkService start.
@@ -335,55 +358,55 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	
 	"ASP UP => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
-	layerManagement startASP: asp.
+	as layerManagement startASP: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStateInactive.
 	self assert: sgp lastMsgReceived class equals: M3UAASPUpMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPUpAckMessage.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagInfoString := as lastNotifyMessageReceived findTag: M3UAConstants tagINFOString.
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is INACTIVE'.
 	tagsRC := as lastNotifyMessageReceived findAllTags: M3UAConstants tagRoutingContext.
 	self assert: tagsRC size equals: 0.
 	remoteAS := sg remoteApplicationServers first.
-	self assert: remoteAS handledRoutingContexts size equals: 0.
+	self assert: remoteAS handledRoutingContextsIds size equals: 0.
 
 	"registration"
 	routingKeys := self routingKeysForStaticRegistrationForAS: asp.
-	registrationRequestMsg := layerManagement rkReg: asp with: routingKeys.
+	registrationRequestMsg := as layerManagement rkReg: asp with: routingKeys.
 	asp sendMessage: registrationRequestMsg toPeer: sgp.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: sgp lastMsgReceived class equals: M3UARegistrationRequestMessage.
-	self assert: remoteAS handledRoutingContexts size equals: 2.
-	(Delay forMilliseconds: delay) wait.
+	self assert: remoteAS handledRoutingContextsIds size equals: 2.
+	self waitSmallDelay.
 	self assert: asp lastMsgReceived class equals: M3UARegistrationResponseMessage.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagsRC := as lastNotifyMessageReceived findAllTags: M3UAConstants tagRoutingContext.
 	self assert: tagsRC size equals: 2.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 
 	"dergistration of one RC"
-	deregistrationRequestMsg := layerManagement rkDereg: asp with: (OrderedCollection with: routingKeys first routingContext).
+	deregistrationRequestMsg := as layerManagement rkDereg: asp with: (OrderedCollection with: routingKeys first routingContextId).
 	asp sendMessage: deregistrationRequestMsg toPeer: sgp.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: sgp lastMsgReceived class equals: M3UADeregistrationRequestMessage.
-	self assert: remoteAS handledRoutingContexts size equals: 1.
-	(Delay forMilliseconds: delay) wait.
+	self assert: remoteAS handledRoutingContextsIds size equals: 1.
+	self waitSmallDelay.
 	self assert: asp lastMsgReceived class equals: M3UADeregistrationResponseMessage.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagsRC := as lastNotifyMessageReceived findAllTags: M3UAConstants tagRoutingContext.
 	self assert: tagsRC size equals: 1.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 		
 	"ASP ACTIVE => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
 	asp aspActive.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	
 	self assert: asp aspStateMachine state class equals: M3UAAspStateActive.
 	self assert: as asStateMachine state class equals: M3UAAsStateActive.
@@ -394,18 +417,11 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is ACTIVE'.
 	
 	"SPG send a MTPTransfer message => test signalUnitData performed"
-	payloadMsg := sgp
-		createMTPTransferRequestPrimitiveWithData: (payload := self class m3uaAspAcAckFrame)
-		routingContext: 29
-		opc: 61
-		dpc: 20
-		si: 3
-		ni: 3
-		mp: 0
-		sls: 9.
-	sgp sendMessage: payloadMsg toPeer: as registeredAsps first. 
+	payload := self class m3uaAspAcAckFrame.
+	payloadData := self createFakePayloadDataWith: payload opc: 61 dpc: 20 routingContextId: 29384 logicalProcess: sgp.
+	sg layerManagement receivesTransfer: payloadData forLogicalProcess: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp lastMsgReceived class equals: M3UAPayloadDataMessage.
 	self assert: as lastPayloadReceived equals: payload.
 	
@@ -415,7 +431,7 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStatePending.
 
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: sgp lastMsgReceived class equals: M3UAASPInactiveMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPInactiveAckMessage.
 		
@@ -427,7 +443,185 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	"ASP DOWN => ASP and AS state machines will be updated"
 	asp aspDown.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
+	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
+	self assert: as asStateMachine state class equals: M3UAAsStateDown.
+	self assert: sgp lastMsgReceived class equals: M3UAASPDownMessage.
+	self assert: asp lastMsgReceived class equals: M3UAASPDownAckMessage.
+	
+	asp sctpRelease
+]
+
+{ #category : #tests }
+M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111_DirectConnection_and_SSNM_messages [
+	"Exemple issued from RFC 4666, Paragraph 5.1.1.1
+	Point to Point example (one route from AS to SG)"
+	
+
+	| asp sgp payload daudMessage payloadData |
+	
+	"Server gateway process and application server process"
+	self initForDirectConnectionAndNumberOfASPForAS: 1 withDynamicRegistration: false.
+	asp := as registeredAsps first.
+	sgp := sg registeredSgps first.
+	as layerManagement manageASP: asp.
+
+	"SGP start listening incoming connections"		
+	sgp networkService start.
+	
+	sg putDebugOn.
+	sgp putDebugOn.
+	as putDebugOn.
+	asp putDebugOn.
+	
+	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
+	
+	"ASP UP => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
+	as layerManagement startASP: asp.
+	
+	self waitSmallDelay.
+	asp aspActive.
+	self waitSmallDelay.
+		
+	"sgp send a MTPTransfer message => test signalUnitData performed"
+	Transcript cr; logCr: '********** SGP sends a PAYLOAD to ASP'.
+	payload := self class m3uaAspAcAckFrame.
+	payloadData := self createFakePayloadDataWith: payload opc: 55555 dpc: 11111 routingContextId: 12345 logicalProcess: sg registeredSgps first.
+	sg layerManagement receivesTransfer: payloadData forLogicalProcess: asp.
+	
+	self waitSmallDelay.
+	self assert: asp lastMsgReceived class equals: M3UAPayloadDataMessage.
+	self assert: as lastPayloadReceived equals: payload.
+
+	"asp send a MTPTransfer message, with an unknown destination (dpc=66666)"
+	self waitBigDelay.
+	Transcript cr; logCr: '********** ASP sends a PAYLOAD to SGP with an UNKNOWN DESTINATION'.
+	payloadData := self createFakePayloadDataWith: payload opc: 55555 dpc: 66666 routingContextId: 12345 logicalProcess: asp.
+	as layerManagement receivesTransfer: payloadData forLogicalProcess: sgp.
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UAPayloadDataMessage.
+	self should: [sg lastPayloadReceived] raise: Error.
+	self assert: asp lastMsgReceived class equals: M3UADestinationUnavailableMessage.
+	self assert: (as trafficManagement unavailableDestinations includes: 66666).
+	self assert: (as trafficManagement unavailableRoutingContexts includes: as handledRoutingContexts first).
+	(Delay forSeconds: asp resendingDAUDPeriod) wait.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	
+	"clear mock"
+	asp disableDAUDScheduler.
+	self waitBigDelay.
+	as trafficManagement removeDestination: 66666.
+	asp resetLastMsgReceived.
+	sg removeDestination: 66666.
+
+	"asp send a MTPTransfer message, with an known destination (dpc=11111)"
+	Transcript cr; logCr: '********** ASP sends a PAYLOAD to SGP with a KNOWN DESTINATION'.
+	payloadData := self createFakePayloadDataWith: payload opc: 55555 dpc: 11111 routingContextId: 12345 logicalProcess: asp.
+	as layerManagement receivesTransfer: payloadData forLogicalProcess: sgp.
+	self waitSmallDelay.
+	self assert: asp lastMsgReceived isNil.
+	self assert: as trafficManagement unavailableDestinations isEmpty.
+	self assert: as trafficManagement unavailableRoutingContexts isEmpty.
+	
+	"asp send an Destination State Audit message - all is OK, should receive a DAVA"
+	self waitBigDelay.
+	sg availableDestination: 11111.
+	self assert: (sg remoteApplicationServers first trafficManagement isDestinationAvailable: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+	Transcript cr; logCr: '********** ASP sends a DAUD (should receive DAVA)'.
+	daudMessage := as auditMessageForDestinations: (OrderedCollection with: 11111) routingContextsIds: (OrderedCollection with: 12345).
+	asp sendMessage: daudMessage toPeer: sgp. 
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	self assert: asp lastMsgReceived class equals: M3UADestinationAvailableMessage.
+	
+	"asp send an Destination State Audit message - should receive a DUPU"
+	asp enableDAUDScheduler.
+	self waitBigDelay.
+	sg userPartSCCPUnavailableDestination: 11111.
+	self assert: (sg remoteApplicationServers first trafficManagement isDestinationUserPartUnavailable: 11111 mtp3User: 3 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+	Transcript cr; logCr: '********** ASP sends a DAUD (should receive DUPU)'.
+	asp sendMessage: daudMessage toPeer: sgp. 
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	self assert: asp lastMsgReceived class equals: M3UADestinationUserPartUnavailableMessage.
+	self assert: ((asp host trafficManagement destinationPointCodesTrafficManagement userPartUnavailableDestinationsForMTP3User: (M3UADestinationUserPartUnavailableMessage dictionaryMTP3UserIdentity
+				at: 'SCCP')) includes: 11111).
+	self assert: ((asp host trafficManagement destinationPointCodesTrafficManagement userPartUnavailableDestinationsForMTP3User: (M3UADestinationUserPartUnavailableMessage dictionaryMTP3UserIdentity
+				at: 'ISUP')) includes: 11111) not.
+	self assert: (as trafficManagement isDestinationUserPartUnavailable: 11111 mtp3User: 3 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+
+	"asp send an Destination State Audit message - should receive a DRST"
+	self waitBigDelay.
+	sg restrictedDestination: 11111.
+	self assert: (sg remoteApplicationServers first trafficManagement isDestinationRestricted: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+	self assert: (as trafficManagement isDestinationRestricted: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)) not.
+	Transcript cr; logCr: '********** ASP sends a DAUD (should receive DRST)'.
+	asp sendMessage: daudMessage toPeer: sgp. 
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	self assert: asp lastMsgReceived class equals: M3UADestinationRestrictedMessage.
+	self assert: (asp host trafficManagement destinationPointCodesTrafficManagement restrictedDestinations includes: 11111).
+	self assert: (as trafficManagement isDestinationRestricted: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+
+	"asp send an Destination State Audit message - should receive a SCON"
+	self waitBigDelay.
+	sg congestedDestination: 11111.
+	self assert: (sg remoteApplicationServers first trafficManagement isExistingCongestionForDestination: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+	self assert: (as trafficManagement isExistingCongestionForDestination: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)) not.	
+	Transcript cr; logCr: '********** ASP sends a DAUD (should receive SCON)'.
+	asp sendMessage: daudMessage toPeer: sgp. 
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	self assert: asp lastMsgReceived class equals: M3UASignallingCongestionMessage.
+	self assert: (asp host trafficManagement destinationPointCodesTrafficManagement congestedDestinations includes: 11111).
+	self assert: (as trafficManagement isExistingCongestionForDestination: 11111 networkAppearance: 777 routingContextsIds: (OrderedCollection with: 12345)).
+	
+	"clear mock"
+	self waitBigDelay.
+	asp resetLastMsgReceived.
+	"set destination 11111 unavailable"
+	sg unavailableDestination: 11111.
+
+	"asp send a MTPTransfer message to the unavailable destination (dpc=11111)"
+	Transcript cr; logCr: '********** ASP sends a PAYLOAD to SGP with an UNAVAILABLE DESTINATION'.
+	payloadData := self createFakePayloadDataWith: payload opc: 55555 dpc: 11111 routingContextId: 12345 logicalProcess: asp.
+	as layerManagement receivesTransfer: payloadData forLogicalProcess: sgp.
+	self waitSmallDelay.
+	self assert: asp lastMsgReceived class equals: M3UADestinationUnavailableMessage.
+	self assert: (as trafficManagement unavailableDestinations includes: 11111).
+	self assert: (as trafficManagement unavailableRoutingContextsIds includes: 12345).
+	"a DAUD timer must has been set and messages sent periodically"
+	(Delay forSeconds: asp resendingDAUDPeriod) wait.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	(Delay forSeconds: asp resendingDAUDPeriod) wait.
+	self assert: sgp lastMsgReceived class equals: M3UADestinationStateAuditMessage.
+	
+	"set destination 11111 available again"
+	Transcript cr; logCr: '********** SET DESTINATION AVAILABLE AGAIN'.
+	sg availableDestination: 11111.
+	(Delay forSeconds: asp resendingDAUDPeriod) wait.
+	self assert: asp lastMsgReceived class equals: M3UADestinationAvailableMessage.
+	self assert: (as trafficManagement unavailableDestinations isEmpty).
+	self assert: (as trafficManagement unavailableRoutingContexts isEmpty).
+	
+	"ASP INACTIVE => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
+	asp aspInactive.
+	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
+	self assert: as asStateMachine state class equals: M3UAAsStatePending.
+
+	self waitSmallDelay.
+	self assert: sgp lastMsgReceived class equals: M3UAASPInactiveMessage.
+	self assert: asp lastMsgReceived class equals: M3UAASPInactiveAckMessage.
+		
+	"wait recover time is over without any state machine modification"
+	(Delay forSeconds: as asStateMachine recoveryTimerDelayMax) wait.
+	(Delay forSeconds: 1) wait.
+	self assert: as asStateMachine state class equals: M3UAAsStateInactive.
+
+	"ASP DOWN => ASP and AS state machines will be updated"
+	asp aspDown.
+	
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	self assert: as asStateMachine state class equals: M3UAAsStateDown.
 	self assert: sgp lastMsgReceived class equals: M3UAASPDownMessage.
@@ -444,16 +638,13 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	- ASP sends DOWN message after that the AS was in AS-ACTIVE state (instead of AS-INACTIVE state in the other case)"
 	
 
-	| delay asp layerManagement sgp payloadMsg tagInfoString payload tagsRCs rcs |
-	delay := 200.
+	| asp sgp tagInfoString payload tagsRCs rcs payloadData |
 	
 	"Server gateway process and application server process"
 	self initForDirectConnectionAndNumberOfASPForAS: 1 withDynamicRegistration: false.
 	asp := as registeredAsps first.
 	sgp := sg registeredSgps first.
-
-	"Create a Layer Managements (LM)"
-	layerManagement := M3UALayerManagement onManagedASP: asp.
+	as layerManagement manageASP: asp.
 
 	"SGP start listening incoming connections"		
 	sgp networkService start.
@@ -466,25 +657,25 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	
 	"ASP UP => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
-	layerManagement startASP: asp.
+	as layerManagement startASP: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStateInactive.
 	self assert: sgp lastMsgReceived class equals: M3UAASPUpMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPUpAckMessage.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagInfoString := as lastNotifyMessageReceived findTag: M3UAConstants tagINFOString.
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is INACTIVE'.
 
-	self assert: (sg dictRoutingContextActivities at: 12345) equals: false.
-	self assert: (sg dictRoutingContextActivities at: 67890) equals: false.
+	self assert: (sg isRoutingContextActive: 12345) equals: false.
+	self assert: (sg isRoutingContextActive: 67890) equals: false.
 
 	"ASP ACTIVE for ONLY ONE routingContext => SG will ACK and send a NOTIFY message, ASP and AS state machines will be updated"
-	asp aspActiveWithRoutingContexts: (OrderedCollection with: as handledRoutingContexts first).
-	(Delay forMilliseconds: delay) wait.
+	asp aspActiveWithRoutingContextsIds: (OrderedCollection with: as handledRoutingContextsIds first).
+	self waitSmallDelay.
 	
 	self assert: asp aspStateMachine state class equals: M3UAAspStateActive.
 	self assert: as asStateMachine state class equals: M3UAAsStateActive.
@@ -493,26 +684,19 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: as lastNotifyMessageReceived class equals: M3UANotifyMessage.
 	tagInfoString := as lastNotifyMessageReceived findTag: M3UAConstants tagINFOString.
 	self assert: tagInfoString data asString equals: 'NOTIFY : ASP AS 1/ASP1 is ACTIVE'.
-	self assert: (sg dictRoutingContextActivities at: as handledRoutingContexts first) equals: true.
-	self assert: (sg dictRoutingContextActivities at: as handledRoutingContexts last) equals: false.
+	self assert: (sg isRoutingContextActive: as handledRoutingContextsIds first) equals: true.
+	self assert: (sg isRoutingContextActive: as handledRoutingContextsIds last) equals: false.
 	tagsRCs := (asp lastMsgReceived findAllTags: M3UAConstants tagRoutingContext).
 	rcs := tagsRCs collect: [ :tag | tag data asInteger ].
 	self assert: rcs size equals: 1.
-	self assert: rcs first equals: as handledRoutingContexts first.
+	self assert: rcs first equals: as handledRoutingContextsIds first.
 	
 	"sgp send a MTPTransfer message => test signalUnitData performed"
-	payloadMsg := sgp
-		createMTPTransferRequestPrimitiveWithData: (payload := self class m3uaAspAcAckFrame)
-		routingContext: 29
-		opc: 61
-		dpc: 20
-		si: 3
-		ni: 3
-		mp: 0
-		sls: 9.
-	sgp sendMessage: payloadMsg toPeer: as registeredAsps first. 
+	payload := self class m3uaAspAcAckFrame.
+	payloadData := self createFakePayloadDataWith: payload opc: 61 dpc: 20 routingContextId: 29384 logicalProcess: sgp.
+	sg layerManagement receivesTransfer: payloadData forLogicalProcess: asp.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp lastMsgReceived class equals: M3UAPayloadDataMessage.
 	self assert: as lastPayloadReceived equals: payload.
 	
@@ -522,14 +706,14 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	self assert: asp aspStateMachine state class equals: M3UAAspStateInactive.
 	self assert: as asStateMachine state class equals: M3UAAsStatePending.
 
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: sgp lastMsgReceived class equals: M3UAASPInactiveMessage.
 	self assert: asp lastMsgReceived class equals: M3UAASPInactiveAckMessage.
 		
 	"ASP ACTIVE sent after 2 sec (before the recover time has expired)"
 	(Delay forSeconds: 2) wait.
 	asp aspActive.
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateActive.
 	self assert: as asStateMachine state class equals: M3UAAsStateActive.
 	self assert: sgp lastMsgReceived class equals: M3UAASPActiveMessage.
@@ -539,7 +723,7 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	"ASP DOWN => ASP and AS state machines will be updated"
 	asp aspDown.
 	
-	(Delay forMilliseconds: delay) wait.
+	self waitSmallDelay.
 	self assert: asp aspStateMachine state class equals: M3UAAspStateDown.
 	self assert: as asStateMachine state class equals: M3UAAsStatePending.
 	self assert: sgp lastMsgReceived class equals: M3UAASPDownMessage.
@@ -547,7 +731,7 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 	
 	"wait recover time is over without any state machine modification"
 	(Delay forSeconds: as asStateMachine recoveryTimerDelayMax) wait.
-	(Delay forSeconds: 1) wait.
+	self waitBigDelay.
 	self assert: as asStateMachine state class equals: M3UAAsStateDown.
 
 	asp sctpRelease
@@ -555,26 +739,23 @@ M3UAApplicationServerProcessTest >> testASPToSGMock_ScenarioRFC4666Paragraph5111
 
 { #category : #tests }
 M3UAApplicationServerProcessTest >> testTansferMessageCreation [
-	| asp payloadMsg readPayloadMsg routingContextTag protocolDataTag |
-	asp := M3UAApplicationServerProcess name: 'asp' identifier: nil.
-	payloadMsg := asp
-		createMTPTransferRequestPrimitiveWithData: self class m3uaAspAcAckFrame
-		routingContext: 29
-		opc: 61
-		dpc: 20
-		si: 3
-		ni: 3
-		mp: 0
-		sls: 9.
+	|  payloadMsg readPayloadMsg routingContextTag protocolDataTag payload networkAppearanceTag correlationIdTag payloadData |
+	payload := self class m3uaAspAcAckFrame.
+	payloadData := self createFakePayloadDataWith: payload.
+	payloadMsg := M3UAApplicationServer new createTransferMessageWithPayloadData: payloadData.
 	readPayloadMsg := M3UAMSG
 		parseToClassFromStream: payloadMsg asByteArray.
 	self assert: readPayloadMsg class equals: M3UAPayloadDataMessage.
 	self
-		assert: (routingContextTag := readPayloadMsg tags first) class
-		equals: M3UATagRoutingContext.
-	self assert: routingContextTag data asInteger equals: 29.
+		assert: (networkAppearanceTag := readPayloadMsg tags first) class
+		equals: M3UATagNetworkAppearance.
+	self assert: networkAppearanceTag data asInteger equals: 777.
 	self
-		assert: (protocolDataTag := readPayloadMsg tags last) class
+		assert: (routingContextTag := readPayloadMsg findTag: M3UAConstants tagRoutingContext) class
+		equals: M3UATagRoutingContext.
+	self assert: routingContextTag data asInteger equals: 29384.
+	self
+		assert: (protocolDataTag := readPayloadMsg findTag: M3UAConstants tagProtocolData) class
 		equals: M3UATagProtocolData.
 	self assert: protocolDataTag opcField equals: 61.
 	self assert: protocolDataTag dpcField equals: 20.
@@ -584,5 +765,24 @@ M3UAApplicationServerProcessTest >> testTansferMessageCreation [
 	self assert: protocolDataTag slsField equals: 9.
 	self
 		assert: protocolDataTag userProtocolData
-		equals: self class m3uaAspAcAckFrame
+		equals: self class m3uaAspAcAckFrame.
+	self
+		assert: (correlationIdTag := readPayloadMsg tags last) class
+		equals: M3UATagCorrelationID.
+	self assert: correlationIdTag data asInteger equals: 28.
+
+]
+
+{ #category : #private }
+M3UAApplicationServerProcessTest >> waitBigDelay [
+	| delay |
+	delay := 3.
+	(Delay forSeconds: delay) wait
+]
+
+{ #category : #private }
+M3UAApplicationServerProcessTest >> waitSmallDelay [
+	| delay |
+	delay := 200.
+	(Delay forMilliseconds: delay) wait
 ]

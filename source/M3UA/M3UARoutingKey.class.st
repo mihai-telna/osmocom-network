@@ -16,14 +16,14 @@ Class {
 	#superclass : #Object,
 	#instVars : [
 		'localRKIdentifier',
-		'routingContext',
 		'trafficModeType',
 		'networkAppearance',
 		'serviceIndicators',
 		'listOpc',
-		'dpc'
+		'dpc',
+		'routingContextId'
 	],
-	#category : #'M3UA-Core'
+	#category : #'M3UA-Traffic'
 }
 
 { #category : #access }
@@ -84,13 +84,13 @@ M3UARoutingKey >> networkAppearance: anObject [
 ]
 
 { #category : #accessing }
-M3UARoutingKey >> routingContext [
-	^ routingContext
+M3UARoutingKey >> routingContextId [
+	^ routingContextId
 ]
 
 { #category : #accessing }
-M3UARoutingKey >> routingContext: anObject [
-	routingContext := anObject
+M3UARoutingKey >> routingContextId: anInteger [
+	routingContextId := anInteger
 ]
 
 { #category : #accessing }

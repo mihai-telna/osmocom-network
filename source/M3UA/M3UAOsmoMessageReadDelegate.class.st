@@ -73,7 +73,7 @@ M3UAOsmoMessageReadDelegate >> m3uaConnection: anObject [
 
 { #category : #writing }
 M3UAOsmoMessageReadDelegate >> nextPut: aData with: aConstant [
-	muxer nextPut: aData "with: aConstant"
+	muxer nextPut: aData
 ]
 
 { #category : #connect }
@@ -121,6 +121,7 @@ M3UAOsmoMessageReadDelegate >> readOneMessage: aSocket [
 	"debug"
 	self logDebug: ' #readOneMessage: ' , msg class name.
 	"end debug"
+	
 	dispatcher dispatch: msg first with: msg second fromDelegate: self
 ]
 

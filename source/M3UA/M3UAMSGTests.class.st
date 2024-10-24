@@ -64,6 +64,80 @@ GSM Mobile Application
 ]
 
 { #category : #tests }
+M3UAMSGTests >> testParseDifferentTags [
+	
+	| tag |
+	"M3UATagAffectedPointCode"
+	tag := M3UATagAffectedPointCode
+				initDataWithNInteger24bits: (OrderedCollection with: 66 with: 77 with: 88)
+				paddingFirstWith: (OrderedCollection with: 0 with: 4 with: 2).
+	self assert: tag affectedPointCodes equals: (OrderedCollection with: 66 with: 77 with: 88).
+	
+	"M3UATagConcernedDestination"
+	tag := M3UATagConcernedDestination
+				initDataWithInteger24bits: 55
+				paddingFirstWith: 0.
+	self assert: tag concernedDestination equals: 55.
+
+	"M3UATagCongestionIndications"
+	tag := M3UATagCongestionIndications
+				initDataWithOneInteger32bits: 2.
+	self assert: tag congestionLevelField equals: 2.
+	tag := M3UATagCongestionIndications
+				initDataWithOneInteger32bits: 3.
+	self assert: tag isCongestionLevel3.
+
+	"M3UATagDeregistrationStatus"
+	tag := M3UATagDeregistrationStatus
+				initDataWithOneInteger32bits: 5.
+	self assert: tag isASPCurrentlyActiveForRoutingContext.
+	
+	"M3UATagDestinationPointCode"
+	tag := M3UATagDestinationPointCode
+						initDataWithInteger24bits: 44
+						paddingFirstWith: 1.
+	self assert: tag destinationPointCode equals: 44.
+
+	"M3UATagMGMTErrorCode"
+	tag := M3UATagMGMTErrorCode initWithData: 7 asByteArray.
+	self assert: tag isProtocolError.
+
+	"M3UATagMGMTNotifyStatus"
+	tag := M3UATagMGMTNotifyStatus
+		type: 1
+		info: 3.
+	self assert: tag statusInfo equals: 3.
+	self assert: tag statusType equals: 1.
+	self assert: tag isInfoAsActive.
+	self assert: tag isTypeApplicationServerStateChange.
+	
+	"M3UATagOriginatingPointCodeList"
+	tag := M3UATagOriginatingPointCodeList
+				initDataWithNInteger24bits: (OrderedCollection with: 66 with: 77 with: 88)
+				paddingFirstWith: (OrderedCollection with: 0 with: 4 with: 2).
+	self assert: tag originatingPointCodes equals: (OrderedCollection with: 66 with: 77 with: 88).
+	
+	"M3UATagRegistrationStatus"
+	tag := M3UATagRegistrationStatus
+				initDataWithOneInteger32bits: 3.
+	self assert: tag isErrorInvalidNetworkAppearance.
+
+	"M3UATagTrafficModeType"
+	tag := M3UATagTrafficModeType
+				initDataWithOneInteger32bits: 2.
+	self assert: tag isLoadshare.
+
+	"M3UATagUserCause"
+	tag := M3UATagUserCause
+				initDataWithTwoInteger16bits: (OrderedCollection with: 1 with: 4).
+	self assert: tag unavailabilityCauseField equals: 1.
+	self assert: tag mtp3UserIdentityField equals: 4.
+	self assert: tag isUnavailabilityUnequippedRemoteUser.
+	self assert: tag isMtp3UserIdentityTUP.
+	
+]
+
+{ #category : #tests }
 M3UAMSGTests >> testParseMessage [
 	| inp msg tagStatus tagRoutingContext tagTrafficMode protocolDataTag sccpMsg |
 	inp := self class m3uaNotify.
@@ -72,7 +146,7 @@ M3UAMSGTests >> testParseMessage [
 	self assert: msg msgClass equals: M3UANotifyMessage messageClass.
 	self assert: msg msgType equals: M3UAConstants typeMgmtNTFY.
 	self assert: (tagStatus := msg findTag: M3UAConstants tagMGMTNotifyStatus) notNil.
-	self assert: tagStatus isStatusApplicationServerStateChange.
+	self assert: tagStatus isTypeApplicationServerStateChange.
 	self assert: tagStatus isInfoAsActive.	
 	self assert: (tagRoutingContext := msg findTag: M3UAConstants tagMGMTNotifyRoutingContext) notNil.
 	self assert: tagRoutingContext data asInteger equals: 56.	
@@ -190,4 +264,13 @@ M3UAMSGTests >> testParseMessageRecursiveTag [
 	tags := readMsg findAllTags: M3UAConstants tagRoutingKey.
 	self assert: tags size equals: 2
 	
+]
+
+{ #category : #tests }
+M3UAMSGTests >> testParseTagAffectedPointCode [
+	| tag |
+	tag := M3UATagAffectedPointCode
+		initDataWithNInteger24bits: #(5 7 6 9)
+		paddingFirstWith: #(0 0 0 0).
+	self assert: tag affectedPointCodes equals: #(5 7 6 9) asOrderedCollection
 ]

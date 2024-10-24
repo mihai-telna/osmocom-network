@@ -31,8 +31,7 @@ M3UADispatcher >> dispatch: anApplication with: aData fromDelegate: aDelegate [
 	| handler |
 	
 	"debug"
-	Transcript
-		logCr: self class name , ' dispatch:with:fromDelegate: ' , aData class name.
+	self logDebug: ' dispatch:with:fromDelegate: ' , aData class name.
 	"end debug"
 
 	handler := handlers at: anApplication
@@ -42,9 +41,8 @@ M3UADispatcher >> dispatch: anApplication with: aData fromDelegate: aDelegate [
 			    area: #m3ua.
 			^false].
 		
-		"debug"
-	Transcript
-		logCr: self class name , ' handler : ' , handler printString.
+	"debug"
+	self logDebug: ' handler : ' , handler printString.
 	"end debug"
 
 	handler value: aData value: aDelegate
@@ -58,5 +56,6 @@ M3UADispatcher >> handlers [
 
 { #category : #initialization }
 M3UADispatcher >> initialize [
+	super initialize.
 	handlers := Dictionary new
 ]

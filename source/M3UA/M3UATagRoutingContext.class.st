@@ -8,8 +8,3 @@ Class {
 M3UATagRoutingContext class >> nrValue [
 	^ M3UAConstants tagRoutingContext
 ]
-
-{ #category : #access }
-M3UATagRoutingContext >> routingContext [
-	^ data
-]

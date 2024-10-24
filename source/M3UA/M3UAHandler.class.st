@@ -63,9 +63,6 @@ M3UAHandler >> receiveM3uaMessage: aByteArray delegate: aOsmoMessageReadDelegate
 M3UAHandler >> registerApplicationM3uaOn: aM3UADispatcher [
 	"Registration process is sent at connexion time.
 	Adds the adequate handler to the dispatcher."
-
-	"--- debug ---"
-	"--- end debug ---"
 	
 	aM3UADispatcher
 		addHandler: M3UAConstants applicationM3UA

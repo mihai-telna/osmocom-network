@@ -44,16 +44,6 @@ M3UATagMGMTNotifyStatus class >> nrValue [
 	^ M3UAConstants tagMGMTNotifyStatus
 ]
 
-{ #category : #access }
-M3UATagMGMTNotifyStatus class >> statusApplicationServerStateChange [
-	^ 1
-]
-
-{ #category : #access }
-M3UATagMGMTNotifyStatus class >> statusOther [
-	^ 2
-]
-
 { #category : #'instance creation' }
 M3UATagMGMTNotifyStatus class >> type: anInteger info: anOtherInteger [
 	| tag data |
@@ -73,14 +63,24 @@ M3UATagMGMTNotifyStatus class >> type: anInteger info: anOtherInteger [
 	^ tag
 ]
 
+{ #category : #access }
+M3UATagMGMTNotifyStatus class >> typeApplicationServerStateChange [
+	^ 1
+]
+
+{ #category : #access }
+M3UATagMGMTNotifyStatus class >> typeOther [
+	^ 2
+]
+
 { #category : #testing }
 M3UATagMGMTNotifyStatus >> isInfoASPFailure [
-	^ self isStatusOther and: [ self statusInfo = self class infoASPFailure ]
+	^ self isTypeOther and: [ self statusInfo = self class infoASPFailure ]
 ]
 
 { #category : #testing }
 M3UATagMGMTNotifyStatus >> isInfoAlternateASPActive [
-	^ self isStatusOther and: [ self statusInfo = self class infoAlternateASPActive ]
+	^ self isTypeOther and: [ self statusInfo = self class infoAlternateASPActive ]
 ]
 
 { #category : #testing }
@@ -100,7 +100,7 @@ M3UATagMGMTNotifyStatus >> isInfoAsPending [
 
 { #category : #testing }
 M3UATagMGMTNotifyStatus >> isInfoInsufficientASPResourcesActiveInAS [
-	^ self isStatusOther and: [ self statusInfo = self class infoInsufficientASPResourcesActiveInAS ]
+	^ self isTypeOther and: [ self statusInfo = self class infoInsufficientASPResourcesActiveInAS ]
 ]
 
 { #category : #testing }
@@ -109,13 +109,13 @@ M3UATagMGMTNotifyStatus >> isInfoReserved [
 ]
 
 { #category : #testing }
-M3UATagMGMTNotifyStatus >> isStatusApplicationServerStateChange [
-	^ self statusType = self class statusApplicationServerStateChange
+M3UATagMGMTNotifyStatus >> isTypeApplicationServerStateChange [
+	^ self statusType = self class typeApplicationServerStateChange
 ]
 
 { #category : #testing }
-M3UATagMGMTNotifyStatus >> isStatusOther [
-	^ self statusType = self class statusOther
+M3UATagMGMTNotifyStatus >> isTypeOther [
+	^ self statusType = self class typeOther
 ]
 
 { #category : #access }

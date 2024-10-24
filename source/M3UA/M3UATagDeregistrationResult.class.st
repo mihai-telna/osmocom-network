@@ -5,7 +5,7 @@ Class {
 }
 
 { #category : #'instance creation' }
-M3UATagDeregistrationResult class >> initWithRoutingContext: anIntegerRC deregistrationStatus: anIntegerStatus [
+M3UATagDeregistrationResult class >> initWithRoutingContextId: anIntegerRC deregistrationStatus: anIntegerStatus [
 	| tag |
 	tag := self new.
 	tag addTag: (M3UATagRoutingContext initWithInteger32: anIntegerRC).

@@ -66,10 +66,10 @@ M3UATagUserCause >> isUnavailabilityUnknown [
 
 { #category : #access }
 M3UATagUserCause >> mtp3UserIdentityField [
-	^ (self data copyFrom: 5 to: 8) asInteger
+	^ (self data copyFrom: 3 to: 4) asInteger
 ]
 
 { #category : #access }
 M3UATagUserCause >> unavailabilityCauseField [
-	^ (self data copyFrom: 1 to: 4) asInteger
+	^ (self data copyFrom: 1 to: 2) asInteger
 ]

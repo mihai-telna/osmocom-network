@@ -1,3 +1,6 @@
+"
+M3UANotifyMessage can be sent by SGP or ASP
+"
 Class {
 	#name : #M3UANotifyMessage,
 	#superclass : #M3UAMGMTMessage,
@@ -17,6 +20,6 @@ M3UANotifyMessage >> aspIdentifier [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UANotifyMessage >> dispatchOnLogicalProcess: anAsp [
-	anAsp handleNotify: self
+M3UANotifyMessage >> dispatchOnLogicalProcess: aLogicalEntityProcess [
+	aLogicalEntityProcess handleNotify: self
 ]

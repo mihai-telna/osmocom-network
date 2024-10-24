@@ -12,5 +12,5 @@ M3UADestinationAvailableMessage class >> messageTag [
 
 { #category : #'m3ua-asp-dispatch' }
 M3UADestinationAvailableMessage >> dispatchOnLogicalProcess: anAsp [
-	anAsp mtp3Boundary handleDestinationAvailable: self
+	anAsp host handleDestinationAvailable: self receivedOnAsp: anAsp
 ]

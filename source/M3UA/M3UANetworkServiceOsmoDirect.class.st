@@ -53,11 +53,15 @@ M3UANetworkServiceOsmoDirect >> doReceiveM3uaMessage: aByteArray delegate: aM3UA
 
 { #category : #dispatching }
 M3UANetworkServiceOsmoDirect >> doRecvM3uaMessage: aByteArray delegate: aOsmoMessageReadDelegateM3UA [
+	"DO NOT FORGET TO REMOVE COMMENTS AROUND ModuleBoundary runSynchronous: WHEN DEVELOPMENT IS OVER"
+
+	self flag: #todo.
 	"ModuleBoundary
-		runSynchronous: [" LogDataPayload value: aByteArray.
-			self
-				doReceiveM3uaMessage: aByteArray
-				delegate: aOsmoMessageReadDelegateM3UA "]"
+		runSynchronous: ["
+	LogDataPayload value: aByteArray.
+	self
+		doReceiveM3uaMessage: aByteArray
+		delegate: aOsmoMessageReadDelegateM3UA	"]"
 ]
 
 { #category : #internal }
@@ -91,16 +95,10 @@ M3UANetworkServiceOsmoDirect >> m3uaHandler [
 	^ handlerBlock at: 2
 ]
 
-{ #category : #transport }
-M3UANetworkServiceOsmoDirect >> myHandlerForMessage: aM3UAMessage [
-	"For One channel only (one delegate only)"
-
-	^ aM3UAMessage myHandlerForDelegate: delegate
-]
-
 { #category : #sending }
 M3UANetworkServiceOsmoDirect >> send: aMessage from: anApplicationServerProcess toTargetPeer: aRemoteASP [
 	| myDelegate handler |
+	
 	"debug"
 	self
 		logDebug:
@@ -113,8 +111,7 @@ M3UANetworkServiceOsmoDirect >> send: aMessage from: anApplicationServerProcess 
 		targetPeerIdentifier: aRemoteASP identifier) ifNil: [ ^ self ].
 		
 	"debug"
-	self
-		logDebug: '(#send:from:toTargetPeer:) delegate : ' , myDelegate channelNumber printString.
+	self logDebug: '(#send:from:toTargetPeer:) delegate : ' , myDelegate channelNumber printString.
 	"end debug"
 	
 	(handler := myDelegate handlerForM3UAMessage: aMessage)

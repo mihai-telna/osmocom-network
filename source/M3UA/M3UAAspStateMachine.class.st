@@ -1,3 +1,11 @@
+"
+This class describes the paragraph 4.3.1 of the RFC4666.
+
+Instance Variables
+	announcer:		<Announcer>
+	asp:		<M3UAApplicationServerProcess>
+	state:		<M3UAAspState>
+"
 Class {
 	#name : #M3UAAspStateMachine,
 	#superclass : #Object,

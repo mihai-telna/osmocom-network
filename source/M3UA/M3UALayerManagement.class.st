@@ -5,15 +5,16 @@ Class {
 	#name : #M3UALayerManagement,
 	#superclass : #M3UAEntity,
 	#instVars : [
-		'as_status_block'
+		'as_status_block',
+		'logicalEntity'
 	],
 	#category : #'M3UA-Core'
 }
 
 { #category : #'instance creation' }
-M3UALayerManagement class >> onManagedASP: anApplicationServerProcess [
+M3UALayerManagement class >> on: aM3UALogicalEntity [
 	^ self new
-		manageASP: anApplicationServerProcess;
+		logicalEntity: aM3UALogicalEntity;
 		yourself
 ]
 
@@ -63,49 +64,6 @@ M3UALayerManagement >> aspIsUp: anApplicationServerProcess [
 				, ' has received an UP ACK msg from its peer'
 		area: #m3ua.
 	self handleAspUpIndication
-]
-
-{ #category : #'ASP Querying (Audit) - SSNM' }
-M3UALayerManagement >> createDAUDQueryWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPc: aBitmapPC infoString: aString [
-	"Creation of a DAUD message (Destination State Audit)
-	ASP is querying SGP to be informed of potental congestion"
-
-	| msg routingContextTag |
-	msg := M3UADestinationStateAuditMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg
-				addTag: (M3UATagNetworkAppearance initWithInteger32: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC).
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString initWithData: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
-{ #category : #'SG Sending - SSNM' }
-M3UALayerManagement >> createDSRTWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPc: aBitmapPC infoString: aString [
-	"Creation of a DSRT message (Destination Restricted)
-	SGP is sending informations to ASP"
-
-	| msg routingContextTag |
-	msg := M3UADestinationRestrictedMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance initWithInteger32: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithData: (anIntegerRC asByteArrayOfSize: 4).
-			msg addTag: routingContextTag ].
-	msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC).
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString initWithData: aString asByteArray);
-				yourself ].
-	^ msg
 ]
 
 { #category : #'Primitives-LayerManagement-AS' }
@@ -236,6 +194,16 @@ M3UALayerManagement >> handleSctpStatusIndication [
    Direction: M3UA -> LM
    Purpose: M3UA reports the status of an SCTP association."
 
+]
+
+{ #category : #accessing }
+M3UALayerManagement >> logicalEntity [
+	^ logicalEntity
+]
+
+{ #category : #accessing }
+M3UALayerManagement >> logicalEntity: anObject [
+	logicalEntity := anObject
 ]
 
 { #category : #managing }

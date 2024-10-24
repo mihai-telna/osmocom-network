@@ -17,6 +17,6 @@ M3UAASPUpAckMessage >> aspIdentifier [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAASPUpAckMessage >> dispatchOnLogicalProcess: aLogicalEntityProcess [
-	aLogicalEntityProcess handleAspUpAck: self
+M3UAASPUpAckMessage >> dispatchOnLogicalProcess: anAsp [
+	anAsp handleAspUpAck: self
 ]
