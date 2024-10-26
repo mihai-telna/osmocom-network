@@ -10,6 +10,6 @@ M3UADestinationStateAuditMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UADestinationStateAuditMessage >> dispatchOnLogicalProcess: anAsp [
-	anAsp mtp3Boundary handleDestinationStateAudit: self
+M3UADestinationStateAuditMessage >> dispatchOnLogicalProcess: aSGP [
+	aSGP host handleDestinationStateAudit: self receivedOnSGP: aSGP
 ]

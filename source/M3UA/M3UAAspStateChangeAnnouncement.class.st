@@ -1,3 +1,12 @@
+"
+This class is used for updating the AS State machine after each SP state change.
+
+Instance Variables
+	aspStateMachine:		<M3UAAspStateMachine>
+	oldState:		<M3UAAspState>
+	newState:		<M3UAAspState>
+
+"
 Class {
 	#name : #M3UAAspStateChangeAnnouncement,
 	#superclass : #Announcement,

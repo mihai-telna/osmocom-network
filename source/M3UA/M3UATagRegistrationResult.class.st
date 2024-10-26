@@ -5,7 +5,7 @@ Class {
 }
 
 { #category : #'instance creation' }
-M3UATagRegistrationResult class >> initWithLocalRKIdentifier: anIntegerRKIdentifier registrationStatus: anIntegerStatus routingContext: anIntegerRC [
+M3UATagRegistrationResult class >> initWithLocalRKIdentifier: anIntegerRKIdentifier registrationStatus: anIntegerStatus routingContextId: anIntegerRC [
 	| tag |
 	tag := self new.
 	tag

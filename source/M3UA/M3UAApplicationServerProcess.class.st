@@ -18,7 +18,6 @@ Class {
 	#name : #M3UAApplicationServerProcess,
 	#superclass : #M3UALogicalEntityProcess,
 	#instVars : [
-		'mtp3Boundary',
 		't_ack',
 		'asp_up_block',
 		'asp_down_block',
@@ -35,7 +34,9 @@ Class {
 		'rk_dereg_block',
 		'error_block',
 		'sctp_restarted_block',
-		'aspStateMachine'
+		'aspStateMachine',
+		't_daud',
+		'stopDAUDScheduler'
 	],
 	#category : #'M3UA-Core'
 }
@@ -47,11 +48,11 @@ M3UAApplicationServerProcess >> aspActive [
    Purpose: LM requests that ASP send an ASP Active message to its peer."
 
 	^ self
-		aspActiveWithRoutingContexts: OrderedCollection new
+		aspActiveWithRoutingContextsIds: OrderedCollection new
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> aspActiveWithRoutingContexts: aCollectionOfIntegerRC [
+M3UAApplicationServerProcess >> aspActiveWithRoutingContextsIds: aCollectionOfIntegerRC [
 	"M-ASP_ACTIVE request
    Direction: LM -> M3UA
    Purpose: LM requests that ASP send an ASP Active message to its peer."
@@ -65,11 +66,8 @@ M3UAApplicationServerProcess >> aspActiveWithRoutingContexts: aCollectionOfInteg
 	self aspStateMachine aspAC: 'Link is active'.
 	
 	"ACTIVE message creation"
-	msg := M3UAASPActiveMessage newMessage
-		addTag:
-			(M3UATagINFOString new
-				data: ('ASP is ACTIVE : ' , self name) asByteArray);
-		yourself.
+	msg := M3UAASPActiveMessage newMessage.
+	msg addTag: (M3UATagINFOString fromString: ('ASP is ACTIVE : ' , self name)).
 	msg
 		addTag:
 			(M3UATagTrafficModeType
@@ -96,7 +94,7 @@ M3UAApplicationServerProcess >> aspDown [
 	self checkNextState: M3UAAspStateDown.
 	self aspStateMachine aspDN: 'Link is down'.
 	msg := M3UAASPDownMessage newMessage
-		addTag: (M3UATagINFOString new data: ('ASP is DOWN : ', self name) asByteArray);
+		addTag: (M3UATagINFOString fromString: ('ASP is DOWN : ', self name));
 		yourself.
 		
 	"envoi du msg"
@@ -139,7 +137,7 @@ M3UAApplicationServerProcess >> aspInactive [
 	self checkNextState: M3UAAspStateInactive.
 	self aspStateMachine aspIA: 'Link is inactive'.
 	msg := M3UAASPInactiveMessage newMessage
-			addTag: (M3UATagINFOString new data: ('ASP is INACTIVE : ', self name) asByteArray);
+			addTag: (M3UATagINFOString fromString: ('ASP is INACTIVE : ', self name));
 		   "addTag: self createRoutingContextTag;"
 		   yourself.
 		
@@ -185,7 +183,7 @@ M3UAApplicationServerProcess >> aspUp [
 	self aspStateMachine aspUP: 'Link is up'.
 	msg := M3UAASPUpMessage newMessage
 		addTag: (M3UATagASPIdentifier new data: self identifier);
-		addTag: (M3UATagINFOString new data: ('ASP is UP : ', self name) asByteArray);
+		addTag: (M3UATagINFOString fromString: ('ASP is UP : ', self name));
 		yourself.
 		
 	"envoi du msg"
@@ -221,117 +219,6 @@ M3UAApplicationServerProcess >> createDeregistrationRequestWith: aCollectionOfRo
 	^ msg
 ]
 
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPDAUDRequestPrimitiveWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPc: aBitmapPC infoString: aString [
-	"Creation of a DAUD message (Destination State Audit)"
-
-	| msg routingContextTag |
-	msg := M3UADestinationAvailableMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance new data: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC).
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString new data: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPPauseRequestPrimitiveWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPcs: aCollectionOfBitmap infoString: aString [
-	"Creation of a DUNA message (Destination Unavailable)"
-
-	| msg routingContextTag |
-	msg := M3UADestinationUnavailableMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance new data: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	aCollectionOfBitmap
-		do:
-			[ :aBitmapPC | msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC) ].
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString new data: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPResumeRequestPrimitiveWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPcs: aCollectionOfBitmap infoString: aString [
-	"Creation of a DAVA message (Destination Available)"
-
-	| msg routingContextTag |
-	msg := M3UADestinationAvailableMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance new data: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	aCollectionOfBitmap
-		do:
-			[ :aBitmapPC | msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC) ].
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString new data: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPStatusDUPURequestPrimitiveWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPc: aBitmapPC userCause: anIntegerUserCause infoString: aString [
-	"Creation of a DUPU message (Destination User Part Unavailable)"
-
-	| msg routingContextTag |
-	msg := M3UADestinationUserPartUnavailableMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance new data: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC).
-	msg addTag: (M3UATagUserCause new data: anIntegerUserCause).
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString new data: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UAApplicationServerProcess >> createMTPStatusSCONRequestPrimitiveWithRoutingContext: anIntegerRC ni: anIntegerNI affectedPcs: aCollectionOfBitmap concernedDestination: anIntegerDestination congestionIndications: anIntegerCongestion infoString: aString [
-	"Creation of a SCON message (Signalling Congestion)"
-
-	| msg routingContextTag |
-	msg := M3UASignallingCongestionMessage newMessage.
-	anIntegerNI
-		ifNotNil: [ msg addTag: (M3UATagNetworkAppearance new data: anIntegerNI) ].
-	anIntegerRC
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anIntegerRC.
-			msg addTag: routingContextTag ].
-	aCollectionOfBitmap
-		do:
-			[ :aBitmapPC | msg addTag: (M3UATagAffectedPointCode initWithBitmap: aBitmapPC) ].
-	msg
-		addTag: (M3UATagConcernedDestination new data: anIntegerDestination).
-	msg
-		addTag: (M3UATagCongestionIndications new data: anIntegerCongestion).
-	aString
-		ifNotNil: [ msg
-				addTag: (M3UATagINFOString new data: aString asByteArray);
-				yourself ].
-	^ msg
-]
-
 { #category : #'Primitives-RKM (creation)' }
 M3UAApplicationServerProcess >> createRegistrationRequestWith: aCollectionOfRoutingKeys [
 	| msg |
@@ -342,8 +229,21 @@ M3UAApplicationServerProcess >> createRegistrationRequestWith: aCollectionOfRout
 	^ msg
 ]
 
+{ #category : #sending }
+M3UAApplicationServerProcess >> disableDAUDScheduler [
+	self logDebug: 'DAUD scheduler disabled.'.
+	t_daud ifNotNil: [ t_daud cancel ].
+	stopDAUDScheduler := true
+]
+
+{ #category : #sending }
+M3UAApplicationServerProcess >> enableDAUDScheduler [
+	self logDebug: 'DAUD scheduler enabled.'.
+	stopDAUDScheduler := false
+]
+
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleAspActiveAck: aMsg [
+M3UAApplicationServerProcess >> handleAspActiveAck: aM3UAASPActiveAckMessage [
 	"M-ASP_ACTIVE confirm
    Direction: M3UA -> LM
    Purpose: ASP reports that it has received an ASP Active
@@ -355,7 +255,7 @@ M3UAApplicationServerProcess >> handleAspActiveAck: aMsg [
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleAspDownAck: aMsg [
+M3UAApplicationServerProcess >> handleAspDownAck: aM3UAASPDownAckMessage [
 	"M-ASP_DOWN confirm
    Direction: M3UA -> LM
    Purpose: ASP reports that it has received an ASP Down Ack message
@@ -367,7 +267,7 @@ M3UAApplicationServerProcess >> handleAspDownAck: aMsg [
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleAspHeartbeatAck: aMsg [
+M3UAApplicationServerProcess >> handleAspHeartbeatAck: aM3UAASPHeartbeatAckMessage [
 	"M-ASP_HEARTBEAT confirm
    Direction: M3UA -> LM
    Purpose: ASP reports that it has received an ASP Heartbeat Ack message
@@ -378,7 +278,7 @@ M3UAApplicationServerProcess >> handleAspHeartbeatAck: aMsg [
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleAspInactiveAck: aMsg [
+M3UAApplicationServerProcess >> handleAspInactiveAck: aM3UAASPInactiveAckMessage [
 	"M-ASP_INACTIVE confirm
    Direction: M3UA -> LM
    Purpose: ASP reports that it has received an ASP Inactive
@@ -390,7 +290,7 @@ M3UAApplicationServerProcess >> handleAspInactiveAck: aMsg [
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleAspUpAck: aMsg [
+M3UAApplicationServerProcess >> handleAspUpAck: aM3UAASPUpAckMessage [
 	"M-ASP_UP confirm
    Direction: M3UA -> LM
    Purpose: ASP reports that it has received an ASP UP Ack message from
@@ -402,30 +302,31 @@ M3UAApplicationServerProcess >> handleAspUpAck: aMsg [
 ]
 
 { #category : #handling }
-M3UAApplicationServerProcess >> handleError: aMsg [
+M3UAApplicationServerProcess >> handleError: aM3UAErrorMessage [
 	"Cancel pending operations.. because something went wrong"
 
 	t_ack ifNotNil: [t_ack cancel].
-	error_block ifNotNil: [ error_block value: aMsg ].
-	self host receiveErrorMessage: aMsg
+	t_daud ifNotNil: [ t_daud cancel ].
+	error_block ifNotNil: [ error_block value: aM3UAErrorMessage ].
+	self host receiveErrorMessage: aM3UAErrorMessage
 
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
-M3UAApplicationServerProcess >> handleNotify: aMsg [
+M3UAApplicationServerProcess >> handleNotify: aM3UANotifyMessage [
 	t_ack ifNotNil: [ t_ack cancel ].
 	self
 		logDebug: self class name, '/', self name, ' has received a NOTIFY msg.'
 		area: #m3ua.
-	self host receiveNotifyMessage: aMsg
+	self host receiveNotifyMessage: aM3UANotifyMessage
 
 ]
 
 { #category : #initialization }
 M3UAApplicationServerProcess >> initialize [
 	super initialize.
-	mtp3Boundary := M3UAMTPLevel3Boundary on: self.
-	aspStateMachine := M3UAAspStateMachine onAsp: self
+	aspStateMachine := M3UAAspStateMachine onAsp: self.
+	stopDAUDScheduler := false
 ]
 
 { #category : #private }
@@ -441,11 +342,6 @@ M3UAApplicationServerProcess >> moveToState: newStateClass [
 
 	"Change the state"
 	self aspStateMachine moveToState: newStateClass
-]
-
-{ #category : #accessing }
-M3UAApplicationServerProcess >> mtp3Boundary [
-	^ mtp3Boundary
 ]
 
 { #category : #'Primitives-LayerManagement-ASP' }
@@ -595,9 +491,24 @@ M3UAApplicationServerProcess >> onSctpStatus: aBlock [
 ]
 
 { #category : #sending }
-M3UAApplicationServerProcess >> resendingPeriod [
-	debugOn ifTrue: [ ^ 34 ].
+M3UAApplicationServerProcess >> resendingDAUDPeriod [
+	"Put an environment variable here"
+
+	self flag: #todo.
 	^ 2
+]
+
+{ #category : #sending }
+M3UAApplicationServerProcess >> resendingPeriod [
+	"Put an environment variable here"
+
+	self flag: #todo.
+	^ 2
+]
+
+{ #category : #mockup }
+M3UAApplicationServerProcess >> resetLastMsgReceived [
+	lastMsgReceived := nil
 ]
 
 { #category : #access }
@@ -640,7 +551,9 @@ M3UAApplicationServerProcess >> sctpRelease [
 
 	established := false.
 	networkService stop.
-	t_ack ifNotNil: [ t_ack cancel ]
+	t_ack ifNotNil: [ t_ack cancel ].
+	t_daud ifNotNil: [ t_daud cancel ].
+	
 ]
 
 { #category : #access }
@@ -688,6 +601,29 @@ M3UAApplicationServerProcess >> sendASPSMOrASPTMMessageToPeer: aM3UAMessage [
 						, ' from ' , self name
 				area: #m3ua ].
 	networkService send: aM3UAMessage from: self toTargetPeer: peer
+]
+
+{ #category : #sending }
+M3UAApplicationServerProcess >> sendDAUDMessageToPeer: aM3UADestinationStateAuditMessage inReplyToMessage: aM3UADestinationUnavailableMessage [
+	"Use this method for sending a periodically a DAUD message (audit), following a DUNA message (destination unavailable).
+	The timer is deleted after receiving a DAVA message (destination available)"
+	
+	t_daud ifNotNil: [ t_daud cancel ].
+	stopDAUDScheduler ifTrue: [ ^ self ].
+	t_daud := TimerScheduler instance
+		scheduleInSeconds: self resendingDAUDPeriod
+		block: [	self logDebug: 'Starting a DAUD scheduler.'.
+			self
+				logNotice:
+					('<1p>:<2p> Sending DAUD message has timed out'
+						expandMacrosWith: networkService hostname
+						with: networkService port)
+				area: #m3ua.
+			self sendDAUDMessageToPeer: aM3UADestinationStateAuditMessage inReplyToMessage: aM3UADestinationUnavailableMessage].
+		
+	(Delay forSeconds: self resendingDAUDPeriod) wait.
+	self logDebug: 'DAUD message sent at ', Time now printString, ' (after a delay of ', self resendingDAUDPeriod printString, ').'.
+	networkService sendReplyMessage: aM3UADestinationStateAuditMessage inReplyToMessage: aM3UADestinationUnavailableMessage
 ]
 
 { #category : #access }

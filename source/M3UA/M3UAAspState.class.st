@@ -1,5 +1,5 @@
 "
-ASP State Transition Diagram
+Super-class for ASP states
 "
 Class {
 	#name : #M3UAAspState,

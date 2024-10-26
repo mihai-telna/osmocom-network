@@ -11,6 +11,8 @@ M3UAPayloadDataMessage class >> messageTag [
 ]
 
 { #category : #'m3ua-asp-dispatch' }
-M3UAPayloadDataMessage >> dispatchOnLogicalProcess: anAsp [
-	anAsp mtp3Boundary handleTransferMessage: self
+M3UAPayloadDataMessage >> dispatchOnLogicalProcess: aLogicalProcess [
+	aLogicalProcess host
+		handlePayloadDataMessage: self
+		receivedOnLogicalProcess: aLogicalProcess
 ]

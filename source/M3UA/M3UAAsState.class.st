@@ -1,5 +1,6 @@
 "
-Application Server State Transition Diagram
+Super-class for AS states
+
 "
 Class {
 	#name : #M3UAAsState,

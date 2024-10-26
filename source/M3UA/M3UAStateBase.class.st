@@ -1,3 +1,10 @@
+"
+Super-class for AS states and ASP states
+
+Instance Variables
+	machine:		<M3UAAsStateMachine | M3UAAspStateMachine>
+
+"
 Class {
 	#name : #M3UAStateBase,
 	#superclass : #Object,
@@ -7,54 +14,12 @@ Class {
 	#category : #'M3UA-States'
 }
 
-{ #category : #graphviz }
-M3UAStateBase class >> addStateFrom: aMethod to: newState class: aClass on: aStream [
-	aStream
-		nextPutAll: aClass name asString;
-		nextPutAll: ' -> ';
-		nextPutAll: newState;
-		nextPutAll: ' [ label = "';
-		nextPutAll: aMethod asString allButLast;
-		nextPutAll: '"];';
-		cr;
-		lf
-]
-
-{ #category : #graphviz }
-M3UAStateBase class >> generateGraphviz [
-	| stream |
-	stream := WriteStream on: String new.
-	stream
-	    nextPutAll: 'digraph {';
-	    cr;
-	    lf.
-	self subclassesDo: 
-		[:class | 
-		class selectors do: 
-			[:selector | 
-			| codeVisitor method |
-			method := class >> selector.
-			codeVisitor := (RBParser parseMethod: method sourceCode) body 
-				    acceptVisitor: M3UAStateMachineVisitor new.
-			codeVisitor stateSet do: 
-				[:newState | 
-				self 
-				    addStateFrom: method selector asString
-				    to: newState
-				    class: class
-				    on: stream]]].
-	^stream
-	    nextPutAll: '}';
-	    contents
-
-]
-
 { #category : #'instance creation' }
-M3UAStateBase class >> on: aM3UAAspStateMachine [
-	"Create a new state for a state machine"
+M3UAStateBase class >> on: aStateMachine [
+	"Create a new state for an AS or ASP state machine"
 
 	^ self new
-		machine: aM3UAAspStateMachine;
+		machine: aStateMachine;
 		yourself
 ]
 

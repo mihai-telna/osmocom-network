@@ -39,11 +39,6 @@ M3UANetworkServiceOsmoDirectServer >> dictionaryChannels [
 	^ dictionaryChannels
 ]
 
-{ #category : #accessing }
-M3UANetworkServiceOsmoDirectServer >> dictionaryChannels: anObject [
-	dictionaryChannels := anObject
-]
-
 { #category : #initialization }
 M3UANetworkServiceOsmoDirectServer >> initialize [
 	super initialize.
@@ -56,11 +51,6 @@ M3UANetworkServiceOsmoDirectServer >> initialize [
 { #category : #accessing }
 M3UANetworkServiceOsmoDirectServer >> m3uaConnectionsServer [
 	^ m3uaConnectionsServer
-]
-
-{ #category : #transport }
-M3UANetworkServiceOsmoDirectServer >> myHandlerForMessage: aM3UAMessage [
-	^ m3uaConnectionsServer myHandlerForMessage: aM3UAMessage
 ]
 
 { #category : #'messages handling' }

@@ -1,3 +1,9 @@
+"
+I am the super-class for ""recursive tags""
+
+Instance Variables
+	tags:		<OrderedCollection of (M3UATag)>
+"
 Class {
 	#name : #M3UATagWithSubTags,
 	#superclass : #M3UATag,

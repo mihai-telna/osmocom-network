@@ -1,3 +1,20 @@
+"
+This class describes the paragraph 4.3.2 of the RFC4666.
+The AS state machine is dependent of ASP states changes, this is described in the method handleAnnoucement: 
+
+Instance Variables
+	aspStateMachines:		<OrderedCollection of (M3UAAspStateMachine)>
+	lastEventReceived:		<String>   can be used for debugging or tests purpose
+	logger:		<LogStructuredLogger>
+	recoveryTimer:		<Integer>
+	recoveryTimerDelayMax:		<Integer>
+	requiredNumberOfAsps:		<Integer>
+	rt_proc:		<Process>
+	state:		<M3UAAsState>
+	statusInformation:		<String>   used in MGMT messages
+	statusType:		<String>     used in MGMT messages
+
+"
 Class {
 	#name : #M3UAAsStateMachine,
 	#superclass : #Object,
@@ -67,12 +84,12 @@ M3UAAsStateMachine >> ac2PN: anEvent [
 	state onAC2PN: anEvent
 ]
 
-{ #category : #acccessing }
+{ #category : #accessing }
 M3UAAsStateMachine >> aspStateMachines [
 	^ aspStateMachines
 ]
 
-{ #category : #acccessing }
+{ #category : #accessing }
 M3UAAsStateMachine >> aspStateMachines: aCollection [
 	aspStateMachines := aCollection.
 	self handleAnnouncements
@@ -260,12 +277,12 @@ M3UAAsStateMachine >> recoveryTimerIsStarted [
 	^ recoveryTimer notNil
 ]
 
-{ #category : #acccessing }
+{ #category : #accessing }
 M3UAAsStateMachine >> requiredNumberOfAsps [
 	^ requiredNumberOfAsps
 ]
 
-{ #category : #acccessing }
+{ #category : #accessing }
 M3UAAsStateMachine >> requiredNumberOfAsps: anInteger [
 	requiredNumberOfAsps := anInteger
 ]
@@ -284,7 +301,7 @@ M3UAAsStateMachine >> startRecoveryTimer [
 	rt_proc resume
 ]
 
-{ #category : #acccessing }
+{ #category : #accessing }
 M3UAAsStateMachine >> state [
 	^ state
 ]

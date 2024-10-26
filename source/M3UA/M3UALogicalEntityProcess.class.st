@@ -6,7 +6,8 @@ Class {
 		'name',
 		'identifier',
 		'networkService',
-		'lastMsgReceived'
+		'lastMsgReceived',
+		'mtp3Boundary'
 	],
 	#category : #'M3UA-Core'
 }
@@ -21,27 +22,7 @@ M3UALogicalEntityProcess class >> name: aString identifier: anArray [
 
 { #category : #tags }
 M3UALogicalEntityProcess >> createInfoTag [
-	^ M3UATagINFOString new data: 'Hello from Smalltalk' asByteArray
-]
-
-{ #category : #'Primitives MTP3-User (creation)' }
-M3UALogicalEntityProcess >> createMTPTransferRequestPrimitiveWithData: aByteArray routingContext: anInteger opc: anIntegerOPC dpc: anIntegerDPC si: anIntegerSI ni: anIntegerNI mp: anIntegerMP sls: anIntegerSLS [
-	| msg routingContextTag protocolDataTag |
-	msg := M3UAPayloadDataMessage newMessage.
-	anInteger
-		ifNotNil: [ routingContextTag := M3UATagRoutingContext
-				initWithInteger32: anInteger.
-			msg addTag: routingContextTag ].
-	protocolDataTag := M3UATagProtocolData
-		userData: aByteArray
-		opc: anIntegerOPC
-		dpc: anIntegerDPC
-		si: anIntegerSI
-		ni: anIntegerNI
-		mp: anIntegerMP
-		sls: anIntegerSLS.
-	msg addTag: protocolDataTag.
-	^ msg
+	^ M3UATagINFOString fromString: 'Hello from Smalltalk'
 ]
 
 { #category : #'error handling' }
@@ -99,6 +80,12 @@ M3UALogicalEntityProcess >> initWith: aNetworkService [
 	aNetworkService logicalProcess: self
 ]
 
+{ #category : #initialization }
+M3UALogicalEntityProcess >> initialize [
+	super initialize.
+	mtp3Boundary := M3UAMTP3Boundary new
+]
+
 { #category : #accessing }
 M3UALogicalEntityProcess >> lastMsgReceived [
 	^ lastMsgReceived
@@ -107,6 +94,11 @@ M3UALogicalEntityProcess >> lastMsgReceived [
 { #category : #debug }
 M3UALogicalEntityProcess >> logDebug: aString [
 	self logDebug: self name , ' : ' , aString area: #m3ua
+]
+
+{ #category : #accessing }
+M3UALogicalEntityProcess >> mtp3Boundary [
+	^ mtp3Boundary
 ]
 
 { #category : #accessing }

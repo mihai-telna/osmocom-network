@@ -12,7 +12,7 @@ M3UATagRoutingKey class >> fromRoutingKey: aM3UARoutingKey [
 		ifNotNil: [ :anInteger | 
 			tagRoutingKey
 				addTag: (M3UATagLocalRoutingKeyIdentifier initWithInteger32: anInteger) ].
-	aM3UARoutingKey routingContext
+	aM3UARoutingKey routingContextId
 		ifNotNil:
 			[ :rc | tagRoutingKey addTag: (M3UATagRoutingContext initWithInteger32: rc) ].
 	aM3UARoutingKey trafficModeType

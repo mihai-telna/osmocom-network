@@ -11,5 +11,5 @@ M3UASignallingCongestionMessage class >> messageTag [
 
 { #category : #'m3ua-asp-dispatch' }
 M3UASignallingCongestionMessage >> dispatchOnLogicalProcess: anAsp [
-	anAsp mtp3Boundary handleSignallingCongestion: self
+	anAsp host handleSignallingCongestion: self
 ]

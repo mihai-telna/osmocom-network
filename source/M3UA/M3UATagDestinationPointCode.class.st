@@ -8,3 +8,8 @@ Class {
 M3UATagDestinationPointCode class >> nrValue [
 	^ M3UAConstants tagDestinationPointCode
 ]
+
+{ #category : #access }
+M3UATagDestinationPointCode >> destinationPointCode [
+	^ (data copyFrom: 2 to: 4) asInteger
+]

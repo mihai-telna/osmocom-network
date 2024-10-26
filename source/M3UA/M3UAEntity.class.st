@@ -14,6 +14,11 @@ M3UAEntity >> initialize [
 ]
 
 { #category : #logging }
+M3UAEntity >> logDebug: aString [
+	self logDebug: self class name , aString area: #m3ua
+]
+
+{ #category : #logging }
 M3UAEntity >> logDebug: aMessage area: anArea [
 	debugOn ifFalse: [ ^ self ].
 	super logDebug: aMessage area: anArea

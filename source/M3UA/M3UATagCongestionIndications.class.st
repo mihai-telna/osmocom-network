@@ -11,7 +11,7 @@ M3UATagCongestionIndications class >> nrValue [
 
 { #category : #access }
 M3UATagCongestionIndications >> congestionLevelField [
-	^ (self data copyFrom: 1 to: 1) asInteger
+	^ (self data copyFrom: 1 to: 4) asInteger
 ]
 
 { #category : #testing }

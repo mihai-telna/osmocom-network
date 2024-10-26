@@ -19,9 +19,7 @@ M3UANetworkService class >> on: anM3UAApplicationServer [
 
 { #category : #debug }
 M3UANetworkService >> logDebug: aString [
-	self
-		logDebug: self class name , '(' , self logicalProcess name , ') : ' , aString
-		area: #m3ua
+	super logDebug: ' (' , self logicalProcess name , ') : ' , aString
 ]
 
 { #category : #accessing }
@@ -55,12 +53,13 @@ M3UANetworkService >> onUnitData: aBlock [
 M3UANetworkService >> signalUnitData: aByteArray fromOpc: opc toDpc: dpc priority: priority [
 	"Inform the upper layer about data"
 
+	"debug"
 	self
 		logDebug:
-			self class name , '(' , self logicalProcess name , ') : '
-				, '#signalUnitData received from ' , opc printString , ' to '
-				, dpc printString
-		area: #m3ua.
+			'#signalUnitData received from ' , opc printString , ' to '
+				, dpc printString.
+	"end debug"
+	
 	on_data
 		ifNotNil: [ on_data
 				cull: aByteArray
@@ -71,14 +70,20 @@ M3UANetworkService >> signalUnitData: aByteArray fromOpc: opc toDpc: dpc priorit
 
 { #category : #connect }
 M3UANetworkService >> start [
+
+	"debug"
 	self logDebug: ' started.'.
+	"end debug"
+	
 	on_connect_block value
 ]
 
 { #category : #connect }
 M3UANetworkService >> stop [
-	self
-		logDebug: self class name , ' stopped.'
-		area: #m3ua.
+
+	"debug"
+	self logDebug: ' stopped.'.
+	"end debug"
+
 	on_release_block value
 ]
